@@ -72,18 +72,25 @@ flowchart TD
      - 2-minute cadence while active / focused.
      - 5-minute cadence when `document.visibilityState === 'hidden'`.
      - Non-blocking `navigator.sendBeacon` and `fetch(..., { keepalive: true })` on window unload.
-   - Client-side credential & token scrubbing before transmission.
+   - **Deterministic Session Teardown:**
+     - Explicit teardown on user logout and unmount (`closeSession()`) clearing interval timers and session IDs.
+     - Cross-browser unload beacons hooking into both `pagehide` and `beforeunload`.
+   - Client-side credential & token scrubbing before transmission (OWASP compliant).
 2. **Master Ingestion API (`/api/v1/telemetry`):**
    - Authenticates spoke requests via `x-spoke-token` matched against `/registry/tenants/{appId}`.
    - OWASP sanitization middleware redacting passwords, bearer tokens, API keys, and credit cards.
-   - Automated session reaper marking sessions with `lastHeartbeat > 6 minutes` as `timed_out`.
+   - **Dynamic Staleness Evaluation (`GET /api/v1/sessions`):**
+     - Resolves live presence on-the-fly (`now - lastHeartbeat > 6 minutes`), automatically transitioning stale sessions to `timed_out` with non-blocking Firestore background persistence.
+     - Status filtering (`?status=active`) is enforced post-evaluation to prevent phantom active sessions.
+   - **Cloud Firestore Automated Reaper (`server/services/sessionReaper.ts`):**
+     - Scheduled and on-demand sweep (`POST /api/v1/reap-sessions` or `npm run reaper`) batch-updating stale documents directly in Cloud Firestore.
 3. **SpokeOps Web Console:**
-   - **Dynamic Tenant Switcher:** Filter by All Applications, Academy Library, Academy Timeliner, Academy Builder, Avventiq, or Hub-Spoke Agent Platform (`hub-spoke-agent-platform`).
-   - **User Presence & Session Monitor:** Tabular view, pulsing status indicators, real-time `Xh Ym Zs` counters, device environment breakdown.
+   - **Dynamic Tenant Switcher:** Filter by All Applications, Academy Library, Academy Timeliner, Academy Builder, Academy Insight, Academy Toolkit, Avventiq, or Hub-Spoke Agent Platform (`hub-spoke-agent-platform`).
+   - **User Presence & Session Monitor:** Tabular view, pulsing status indicators, real-time `Xh Ym Zs` counters, client environment breakdown.
    - **Audit Explorer:** Chronological feed with color-coded severity (`SUCCESS`, `WARNING`, `DENIED`), and a slide-out Contextual JSON Drawer preserving table scroll position.
    - **Help Desk Persona & Masking Engine:**
      - **Help Desk Viewer:** IP addresses automatically masked (`192.168.***.***`), eviction disabled, export blocked.
-     - **Ops Admin:** Unmasked IP view, manual session eviction triggers, full JSON/CSV export.
+     - **Ops Admin:** Unmasked IP view, manual session eviction triggers with Cloud Firestore fallback, full JSON/CSV export.
 
 ---
 
