@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentTaskRequest",
+  "description": "Hub-to-Spoke Task Request Schema adhering to AES v3 Standard",
+  "type": "object",
+  "properties": {
+    "trace_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "source_app": {
+      "type": "string",
+      "enum": ["academy-apps", "avventiq", "core-hub"]
+    },
+    "target_spoke": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string"
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "target_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "storage_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "context_metadata": {
+          "type": "object"
+        }
+      },
+      "required": ["repository", "target_files"]
+    }
+  },
+  "required": ["trace_id", "session_id", "target_spoke", "action", "payload"]
+}

@@ -1,0 +1,50 @@
+steps:
+  # 1. Build Master Orchestrator (Hub)
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform/master-orchestrator:latest'
+      - '-f'
+      - 'hub/Dockerfile'
+      - '.'
+
+  # 2. Build Spoke Housekeeper
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform/spoke-housekeeper:latest'
+      - '-f'
+      - 'spokes/housekeeper/Dockerfile'
+      - '.'
+
+  # 3. Build Spoke Video Ingest
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform/spoke-video-ingest:latest'
+      - '-f'
+      - 'spokes/video-ingest/Dockerfile'
+      - '.'
+
+  # 4. Build Web Management Dashboard UI
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform/hub-spoke-web-ui:latest'
+      - '-f'
+      - 'ui/Dockerfile'
+      - 'ui/'
+
+images:
+  - 'us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform/master-orchestrator:latest'
+  - 'us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform/spoke-housekeeper:latest'
+  - 'us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform/spoke-video-ingest:latest'
+  - 'us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform/hub-spoke-web-ui:latest'
+
+timeout: '1200s'
+options:
+  machineType: 'E2_HIGHCPU_8'

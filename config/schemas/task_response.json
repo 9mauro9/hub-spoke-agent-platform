@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentTaskResponse",
+  "description": "Spoke-to-Hub Task Response Schema adhering to AES v3 Standard",
+  "type": "object",
+  "properties": {
+    "trace_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "spoke_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "retry_required"]
+    },
+    "execution_metrics": {
+      "type": "object",
+      "properties": {
+        "duration_ms": {
+          "type": "integer"
+        },
+        "token_consumption": {
+          "type": "integer"
+        }
+      },
+      "required": ["duration_ms", "token_consumption"]
+    },
+    "result_payload": {
+      "type": "object",
+      "properties": {
+        "modified_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "storage_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "error_logs": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": ["trace_id", "session_id", "spoke_id", "status", "execution_metrics"]
+}

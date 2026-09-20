@@ -1,0 +1,104 @@
+platform:
+  name: "hub-spoke-agent-platform"
+  version: "3.0.0"
+  standard: "AES v3"
+  environment: "production"
+
+gcp:
+  project_id: "hub-spoke-agent-platform"
+  region: "us-central1"
+  vpc_sc_perimeter: "accessPolicies/123456789/servicePerimeters/agent_platform_perimeter"
+  
+services:
+  hub:
+    name: "master-orchestrator"
+    runtime: "python311"
+    min_instances: 1
+    max_instances: 10
+    memory: "2Gi"
+    cpu: "2"
+    concurrency: 80
+    timeout_seconds: 300
+    ingress: "internal-and-cloud-load-balancing"
+  
+  spokes:
+    housekeeper:
+      name: "spoke-housekeeper"
+      runtime: "python311"
+      min_instances: 0
+      max_instances: 5
+      memory: "1Gi"
+      cpu: "1"
+      timeout_seconds: 180
+      mcp_port: 8080
+    video_ingest:
+      name: "spoke-video-ingest"
+      runtime: "python311"
+      min_instances: 0
+      max_instances: 10
+      memory: "2Gi"
+      cpu: "2"
+      timeout_seconds: 900
+      mcp_port: 8080
+      research_bucket: "agent-research-artifacts"
+
+pubsub:
+  topics:
+    tasks: "agent-tasks"
+    responses: "agent-responses"
+    dead_letter: "agent-dlq"
+  subscriptions:
+    housekeeper_sub: "spoke-housekeeper-sub"
+    hub_responses_sub: "hub-responses-sub"
+  dlq_policy:
+    max_delivery_attempts: 5
+    dead_letter_topic: "agent-dlq"
+    alert_on_dlq_message: true
+
+firestore:
+  database: "(default)"
+  collections:
+    sessions: "agent_sessions"
+    telemetry: "agent_telemetry"
+    audit_logs: "agent_audit_logs"
+    few_shot_examples: "agent_few_shots"
+
+finops:
+  currency: "USD"
+  monthly_budget_cap: 1000.00
+  alert_thresholds: [0.50, 0.75, 0.90, 1.00]
+  pricing_matrix:
+    gemini-1.5-pro:
+      input_per_million_tokens: 3.50
+      output_per_million_tokens: 10.50
+    gemini-1.5-flash:
+      input_per_million_tokens: 0.075
+      output_per_million_tokens: 0.30
+    gemini-2.0-flash:
+      input_per_million_tokens: 0.10
+      output_per_million_tokens: 0.40
+  sliding_context:
+    max_retry_cycles: 3
+    max_summary_tokens: 500
+
+security:
+  cloud_armor:
+    policy_name: "edge-waf-policy"
+    enable_sqli_protection: true
+    enable_xss_protection: true
+  model_armor:
+    filter_prompt_injection: true
+    scrub_pii: true
+    pii_types:
+      - "EMAIL_ADDRESS"
+      - "CREDIT_CARD_NUMBER"
+      - "US_SOCIAL_SECURITY_NUMBER"
+      - "API_KEY"
+      - "PHONE_NUMBER"
+  principal_access_boundary:
+    enforce_strict_isolation: true
+    allowed_domains:
+      - "academy-apps"
+      - "avventiq"
+      - "core-hub"
+    cross_domain_access_allowed: false
