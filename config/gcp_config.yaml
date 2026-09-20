@@ -41,6 +41,14 @@ services:
       timeout_seconds: 900
       mcp_port: 8080
       research_bucket: "agent-research-artifacts"
+    spokeops:
+      name: "spokeops"
+      gcp_project_id: "spokeops-509217"
+      project_number: "541312712358"
+      region: "us-central1"
+      ingestion_service: "spokeops-ingestion"
+      ingestion_url: "https://spokeops-ingestion-541312712358.us-central1.run.app"
+      hosting_url: "https://spokeops-509217.web.app"
 
 pubsub:
   topics:
@@ -101,4 +109,5 @@ security:
       - "academy-apps"
       - "avventiq"
       - "core-hub"
+      - "spokeops"
     cross_domain_access_allowed: false

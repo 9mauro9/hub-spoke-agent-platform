@@ -1,0 +1,20 @@
+FROM node:20-slim
+WORKDIR /app
+
+# Copy dependency manifests
+COPY package*.json ./
+
+# Install production dependencies and tsx for execution
+RUN npm install --production && npm install tsx -g
+
+# Copy server code and types
+COPY server/ ./server/
+COPY sdk/ ./sdk/
+COPY src/types/ ./src/types/
+COPY tsconfig.json ./
+
+ENV NODE_ENV=production
+ENV PORT=8080
+EXPOSE 8080
+
+CMD ["tsx", "server/index.ts"]

@@ -5,6 +5,8 @@ import { HitlActionControls } from "./HitlActionControls.tsx";
 import { Badge } from "../common/Badge.tsx";
 import { AlertOctagon } from "lucide-react";
 import { api } from "../../api/client.ts";
+import { useAuth } from "../../context/AuthContext.tsx";
+import { spokeOps } from "@/telemetry/spokeOpsClient.ts";
 
 interface HitlApprovalModalProps {
   isOpen: boolean;
@@ -21,6 +23,7 @@ export const HitlApprovalModal: React.FC<HitlApprovalModalProps> = ({
   payload,
   onDecisionSubmitted,
 }) => {
+  const { user, checkPermission } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -32,14 +35,34 @@ export const HitlApprovalModal: React.FC<HitlApprovalModalProps> = ({
   const slidingSummary = payload?.state?.sliding_context_summary || null;
 
   const handleApprove = async () => {
+    if (!checkPermission("operator", "/hitl/approve")) {
+      setErrorMessage("Permission Denied: Current RBAC role cannot approve tasks. Switch to Operator or Admin.");
+      return;
+    }
+
     setLoading(true);
     setErrorMessage(null);
     try {
       await api.submitHitlDecision(sessionId, {
         action: "approve",
-        approver_id: "lead-operator",
-        comments: "Approved via Web Management Dashboard",
+        approver_id: user.email,
+        comments: `Approved via Web Management Dashboard by ${user.displayName}`,
       });
+
+      // Emit policy_update audit event for HITL gate approval
+      spokeOps.logAudit({
+        action: "policy_update",
+        resourceType: "hitl_approval_gate",
+        resourceId: sessionId,
+        status: "success",
+        metadata: {
+          decision: "approve",
+          approverId: user.uid,
+          approverEmail: user.email,
+          modifiedFilesCount: modifiedFiles.length,
+        },
+      });
+
       if (onDecisionSubmitted) onDecisionSubmitted();
       onClose();
     } catch (err: any) {
@@ -50,14 +73,34 @@ export const HitlApprovalModal: React.FC<HitlApprovalModalProps> = ({
   };
 
   const handleReject = async (reason: string) => {
+    if (!checkPermission("operator", "/hitl/reject")) {
+      setErrorMessage("Permission Denied: Current RBAC role cannot reject tasks. Switch to Operator or Admin.");
+      return;
+    }
+
     setLoading(true);
     setErrorMessage(null);
     try {
       await api.submitHitlDecision(sessionId, {
         action: "reject",
-        approver_id: "lead-operator",
+        approver_id: user.email,
         comments: reason,
       });
+
+      // Emit policy_update audit event for HITL gate rejection
+      spokeOps.logAudit({
+        action: "policy_update",
+        resourceType: "hitl_approval_gate",
+        resourceId: sessionId,
+        status: "warning",
+        metadata: {
+          decision: "reject",
+          reason,
+          approverId: user.uid,
+          approverEmail: user.email,
+        },
+      });
+
       if (onDecisionSubmitted) onDecisionSubmitted();
       onClose();
     } catch (err: any) {
@@ -68,14 +111,34 @@ export const HitlApprovalModal: React.FC<HitlApprovalModalProps> = ({
   };
 
   const handleFeedback = async (feedback: string) => {
+    if (!checkPermission("operator", "/hitl/feedback")) {
+      setErrorMessage("Permission Denied: Current RBAC role cannot inject feedback. Switch to Operator or Admin.");
+      return;
+    }
+
     setLoading(true);
     setErrorMessage(null);
     try {
       await api.submitHitlDecision(sessionId, {
         action: "feedback",
-        approver_id: "lead-operator",
+        approver_id: user.email,
         feedback,
       });
+
+      // Emit policy_update audit event for corrective feedback
+      spokeOps.logAudit({
+        action: "policy_update",
+        resourceType: "hitl_approval_gate",
+        resourceId: sessionId,
+        status: "success",
+        metadata: {
+          decision: "feedback",
+          feedbackLength: feedback.length,
+          approverId: user.uid,
+          approverEmail: user.email,
+        },
+      });
+
       if (onDecisionSubmitted) onDecisionSubmitted();
       onClose();
     } catch (err: any) {

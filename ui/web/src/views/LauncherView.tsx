@@ -5,6 +5,8 @@ import { Button } from "../components/common/Button.tsx";
 import { Badge } from "../components/common/Badge.tsx";
 import { api } from "../api/client.ts";
 import { CostEstimate, AgentTaskRequest } from "../api/schemas.ts";
+import { useAuth } from "../context/AuthContext.tsx";
+import { spokeOps } from "@/telemetry/spokeOpsClient.ts";
 import {
   Rocket,
   Wrench,
@@ -17,6 +19,7 @@ interface LauncherViewProps {
 
 export const LauncherView: React.FC<LauncherViewProps> = ({ onTaskDispatched }) => {
   const { addSession, emergencyCircuitBreakerActive } = usePlatform();
+  const { checkPermission } = useAuth();
 
   // Form state
   const [targetSpoke, setTargetSpoke] = useState<string>("spoke-housekeeper");
@@ -94,6 +97,13 @@ export const LauncherView: React.FC<LauncherViewProps> = ({ onTaskDispatched }) 
     setDispatching(true);
     setErrorMsg(null);
 
+    // Step 2.3 of directive: Check RBAC permission for task dispatch
+    if (!checkPermission("operator", "/launcher/dispatch")) {
+      setErrorMsg("Permission Denied: Current RBAC role does not have dispatch privileges. Switch to 'Operator' or 'Admin' in the top bar.");
+      setDispatching(false);
+      return;
+    }
+
     const sessionId = `ui-sess-${crypto.randomUUID().slice(0, 8)}`;
     const traceId = crypto.randomUUID();
 
@@ -145,10 +155,39 @@ export const LauncherView: React.FC<LauncherViewProps> = ({ onTaskDispatched }) 
         startTime: Date.now(),
       });
 
+      // Step 2.1 of directive: Emit agent_task_started audit event
+      const promptText = targetSpoke === "spoke-video-ingest" ? researchFocus : `${action} on ${repository}`;
+      spokeOps.logAudit({
+        action: "agent_task_started",
+        resourceType: "agent_workflow",
+        resourceId: res.session_id,
+        status: "success",
+        metadata: {
+          promptLength: promptText.length,
+          targetAgent: targetSpoke,
+          action: action,
+          sourceApp: sourceApp,
+          repository: repository,
+        },
+      });
+
       onTaskDispatched(res.session_id);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to dispatch agent task");
       setDispatching(false);
+
+      // Step 2 of directive: Emit agent_task_failed audit event
+      spokeOps.logAudit({
+        action: "agent_task_failed",
+        resourceType: "agent_workflow",
+        resourceId: sessionId,
+        status: "warning",
+        metadata: {
+          error: err.message || "Failed to dispatch agent task",
+          targetAgent: targetSpoke,
+          action: action,
+        },
+      });
     }
   };
 

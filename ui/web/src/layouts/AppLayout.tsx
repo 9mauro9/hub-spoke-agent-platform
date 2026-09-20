@@ -1,5 +1,6 @@
 import React from "react";
 import { usePlatform } from "../contexts/PlatformContext.tsx";
+import { useAuth, ControlPlaneRole } from "../context/AuthContext.tsx";
 import { Badge } from "../components/common/Badge.tsx";
 import {
   Rocket,
@@ -9,6 +10,8 @@ import {
   ShieldCheck,
   AlertOctagon,
   Cpu,
+  UserCheck,
+  Radio,
 } from "lucide-react";
 
 export type ViewTab = "launcher" | "monitor" | "registry" | "financials";
@@ -29,6 +32,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     emergencyCircuitBreakerActive,
     finopsSummary,
   } = usePlatform();
+  const { activeRole, setActiveRole } = useAuth();
 
   const navItems: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
     { id: "launcher", label: "Task Launcher", icon: <Rocket className="w-4 h-4" /> },
@@ -114,6 +118,27 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               </div>
             )}
 
+            {/* Operator Persona & RBAC Role Selector */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+              <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+              <select
+                value={activeRole}
+                onChange={(e) => setActiveRole(e.target.value as ControlPlaneRole)}
+                className="bg-transparent text-slate-300 font-mono text-[11px] focus:outline-none cursor-pointer"
+                title="Active Operator RBAC Persona"
+              >
+                <option value="platform_operator" className="bg-slate-900 text-slate-200">
+                  Role: Operator
+                </option>
+                <option value="admin" className="bg-slate-900 text-slate-200">
+                  Role: Admin
+                </option>
+                <option value="viewer" className="bg-slate-900 text-slate-200">
+                  Role: Viewer
+                </option>
+              </select>
+            </div>
+
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-slate-300">Hub Online</span>
@@ -132,6 +157,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               Master Orchestrator Cloud Run (AES v3 Standard)
+            </span>
+            <span className="text-slate-700">|</span>
+            <span className="flex items-center gap-1.5 text-indigo-400">
+              <Radio className="w-3 h-3 text-indigo-400 animate-pulse" />
+              SpokeOps Telemetry Active
             </span>
             <span className="text-slate-700">|</span>
             <span>Firestore In-Memory / ADC Stream Active</span>

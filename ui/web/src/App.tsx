@@ -7,6 +7,8 @@ import { RegistryView } from "./views/RegistryView.tsx";
 import { FinancialsView } from "./views/FinancialsView.tsx";
 import { StatsOverview } from "./components/dashboard/StatsOverview.tsx";
 
+import { AuthProvider } from "./context/AuthContext.tsx";
+
 const DashboardContent: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<ViewTab>("launcher");
   const { setActiveSessionId } = usePlatform();
@@ -42,9 +44,11 @@ const DashboardContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <PlatformProvider>
-      <DashboardContent />
-    </PlatformProvider>
+    <AuthProvider>
+      <PlatformProvider>
+        <DashboardContent />
+      </PlatformProvider>
+    </AuthProvider>
   );
 };
 

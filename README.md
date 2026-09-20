@@ -70,6 +70,7 @@ flowchart TD
 | **Master Orchestrator** | Cloud Run (`master-orchestrator`) | Deterministic LangGraph state machine, task planning, pre-execution FinOps projection, HITL gates, and telemetry reconciliation. | [hub/README.md](hub/README.md) |
 | **Spoke 1: Housekeeper** | Cloud Run (`spoke-housekeeper`) | FastMCP worker for repository hygiene, dead file elimination, Markdown link auditing, and Firestore security rules verification. | [spokes/housekeeper/README.md](spokes/housekeeper/README.md) |
 | **Spoke 2: Video Ingest** | Cloud Run (`spoke-video-ingest`) | Multimodal technical extraction from YouTube and Cloud Storage videos via Gemini API, streaming structured specifications to GCS. | [spokes/video-ingest/README.md](spokes/video-ingest/README.md) |
+| **SpokeOps (Telemetry & RBAC Observability)** | Cloud Run & Firebase (`spokeops-ingestion` / `spokeops-509217`) | Universal telemetry ingestion, session monitoring, Help Desk IP masking, and RBAC observability platform across Academy Apps, Avventiq, and Hub-Spoke. | [spokeops/README.md](spokeops/README.md) |
 | **Web Control Center** | Cloud Run (`hub-spoke-web-ui`) | Terminal-free dashboard with React Flow visualization, real-time SSE streaming, interactive diff viewer, and FinOps spending sliders. | [ui/README.md](ui/README.md) |
 | **State & Memory** | Cloud Firestore Native | Persistent transactional storage for session states (`agent_sessions`), telemetry (`agent_telemetry`), audit logs, and few-shots. | [config/gcp_config.yaml](config/gcp_config.yaml) |
 | **Event Bus & DLQ** | Cloud Pub/Sub | Decoupled asynchronous task dispatching with poison pill isolation to `agent-dlq`. | [shared/contracts/dlq.py](shared/contracts/dlq.py) |
@@ -77,16 +78,18 @@ flowchart TD
 
 ---
 
-## 3. Production Deployment Profile (GCP Project: `hub-spoke-agent-platform`)
+## 3. Production Deployment Profile
 
 ### Live Production Endpoints
 
-| Service | Cloud Run Production URL | Status | Ingress / Auth |
-|---|---|---|---|
-| **Web Control UI** | [https://hub-spoke-web-ui-60727530657.us-central1.run.app](https://hub-spoke-web-ui-60727530657.us-central1.run.app) | `ACTIVE (200 OK)` | Public / Unauthenticated |
-| **Master Orchestrator** | [https://master-orchestrator-60727530657.us-central1.run.app](https://master-orchestrator-60727530657.us-central1.run.app) | `ACTIVE (200 OK)` | Public / Unauthenticated |
-| **Spoke 1: Housekeeper** | [https://spoke-housekeeper-60727530657.us-central1.run.app](https://spoke-housekeeper-60727530657.us-central1.run.app) | `ACTIVE (200 OK)` | Public / Unauthenticated |
-| **Spoke 2: Video Ingest** | [https://spoke-video-ingest-60727530657.us-central1.run.app](https://spoke-video-ingest-60727530657.us-central1.run.app) | `ACTIVE (200 OK)` | Public / Unauthenticated |
+| Service | Cloud Run / Firebase Production URL | GCP Project | Status | Ingress / Auth |
+|---|---|---|---|---|
+| **Web Control UI** | [https://hub-spoke-web-ui-60727530657.us-central1.run.app](https://hub-spoke-web-ui-60727530657.us-central1.run.app) | `hub-spoke-agent-platform` | `ACTIVE (200 OK)` | Public / Unauthenticated |
+| **Master Orchestrator** | [https://master-orchestrator-60727530657.us-central1.run.app](https://master-orchestrator-60727530657.us-central1.run.app) | `hub-spoke-agent-platform` | `ACTIVE (200 OK)` | Public / Unauthenticated |
+| **Spoke 1: Housekeeper** | [https://spoke-housekeeper-60727530657.us-central1.run.app](https://spoke-housekeeper-60727530657.us-central1.run.app) | `hub-spoke-agent-platform` | `ACTIVE (200 OK)` | Public / Unauthenticated |
+| **Spoke 2: Video Ingest** | [https://spoke-video-ingest-60727530657.us-central1.run.app](https://spoke-video-ingest-60727530657.us-central1.run.app) | `hub-spoke-agent-platform` | `ACTIVE (200 OK)` | Public / Unauthenticated |
+| **SpokeOps Web Console** | [https://spokeops-509217.web.app](https://spokeops-509217.web.app) | `spokeops-509217` | `ACTIVE (200 OK)` | Public / Firebase Auth |
+| **SpokeOps Ingestion API** | [https://spokeops-ingestion-541312712358.us-central1.run.app](https://spokeops-ingestion-541312712358.us-central1.run.app) | `spokeops-509217` | `ACTIVE (200 OK)` | Public / x-spoke-token |
 
 ### Google Cloud Infrastructure Topology
 

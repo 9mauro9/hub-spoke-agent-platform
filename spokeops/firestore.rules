@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for RBAC evaluation under AES v3
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOpsAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.role == 'ops_admin' || request.auth.token.email.matches('.*@spokeops[.]corp') || request.auth.token.email.matches('.*@admin[.].*'));
+    }
+
+    function isHelpdeskViewer() {
+      return isAuthenticated() && 
+        (request.auth.token.role == 'helpdesk_viewer' || isOpsAdmin());
+    }
+
+    // Tenant Registry: Readable by authenticated operators, writable only by Ops Admins
+    match /registry/tenants/{appId} {
+      allow read: if isAuthenticated();
+      allow write: if isOpsAdmin();
+    }
+
+    // Sessions Subcollection: Readable by operators, writable only through ingestion service or Ops Admin eviction
+    match /tenants/{appId}/sessions/{sessionId} {
+      allow read: if isHelpdeskViewer();
+      // Only Ops Admin can update session (e.g. administrative eviction / status = 'closed')
+      allow update: if isOpsAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'lastHeartbeat']);
+      allow create, delete: if false; // Ingestion occurs via trusted Cloud Run service backend
+    }
+
+    // Audit Events Subcollection: Immutable append-only log.
+    // Operators can inspect, but direct client creation/mutation is strictly denied.
+    match /tenants/{appId}/events/{eventId} {
+      allow read: if isHelpdeskViewer();
+      allow write: if false; // Only written by backend ingestion API using Admin SDK
+    }
+
+    // Default deny all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -5,6 +5,8 @@ import { Badge } from "../common/Badge.tsx";
 import { ShieldAlert, AlertOctagon, CheckCircle2, Sliders } from "lucide-react";
 import { api } from "../../api/client.ts";
 import { usePlatform } from "../../contexts/PlatformContext.tsx";
+import { useAuth } from "../../context/AuthContext.tsx";
+import { spokeOps } from "@/telemetry/spokeOpsClient.ts";
 
 interface EmergencyCircuitBreakerProps {
   currentBudgetCap: number;
@@ -18,16 +20,37 @@ export const EmergencyCircuitBreaker: React.FC<EmergencyCircuitBreakerProps> = (
   haltReason,
 }) => {
   const { refreshFinops } = usePlatform();
+  const { user, checkPermission } = useAuth();
   const [budgetCap, setBudgetCap] = useState<number>(currentBudgetCap || 50.0);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   const handleUpdateBudget = async () => {
+    // Step 2.3 of directive: Check RBAC permission for policy updates
+    if (!checkPermission("admin", "/governance/circuit-breaker/budget")) {
+      setMsg("Permission Denied: Only Admin role can adjust monthly budget ceilings.");
+      return;
+    }
+
     setLoading(true);
     setMsg(null);
     try {
       await api.updateCircuitBreaker({ monthly_budget_cap_usd: budgetCap });
       await refreshFinops();
+
+      // Emit policy_update audit event
+      spokeOps.logAudit({
+        action: "policy_update",
+        resourceType: "tenant_policy",
+        resourceId: "monthly_budget_cap_usd",
+        status: "success",
+        metadata: {
+          newBudgetCapUsd: budgetCap,
+          updatedBy: user.email,
+          role: user.roles[0],
+        },
+      });
+
       setMsg("Budget ceiling updated successfully.");
       setTimeout(() => setMsg(null), 3000);
     } catch (err: any) {
@@ -38,15 +61,34 @@ export const EmergencyCircuitBreaker: React.FC<EmergencyCircuitBreakerProps> = (
   };
 
   const handleToggleEmergencyHalt = async () => {
+    // Step 2.3 of directive: Check RBAC permission for emergency kill switch
+    if (!checkPermission("admin", "/governance/circuit-breaker/halt")) {
+      setMsg("Permission Denied: Only Admin role can toggle master emergency kill switch.");
+      return;
+    }
+
     setLoading(true);
     setMsg(null);
     try {
       const nextHaltState = !isActive;
       await api.updateCircuitBreaker({
         emergency_halt: nextHaltState,
-        halt_reason: nextHaltState ? "Immediate emergency halt triggered from Web Management Dashboard" : undefined,
+        halt_reason: nextHaltState ? `Immediate emergency halt triggered by ${user.displayName}` : undefined,
       });
       await refreshFinops();
+
+      // Emit policy_update audit event
+      spokeOps.logAudit({
+        action: "policy_update",
+        resourceType: "tenant_policy",
+        resourceId: "emergency_circuit_breaker",
+        status: nextHaltState ? "warning" : "success",
+        metadata: {
+          emergencyHaltActive: nextHaltState,
+          operator: user.email,
+          role: user.roles[0],
+        },
+      });
     } catch (err: any) {
       setMsg(err.message || "Failed to toggle emergency circuit breaker");
     } finally {

@@ -1,0 +1,13 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/spokeops-509217/spokeops/spokeops-ingestion:latest'
+      - '-f'
+      - 'Dockerfile.server'
+      - '.'
+images:
+  - 'us-central1-docker.pkg.dev/spokeops-509217/spokeops/spokeops-ingestion:latest'
+options:
+  logging: CLOUD_LOGGING_ONLY
