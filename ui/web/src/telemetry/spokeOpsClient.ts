@@ -36,7 +36,7 @@ export class SpokeOpsTelemetry {
     "hub-spoke-agent-platform";
   private endpoint =
     (typeof import.meta !== "undefined" && import.meta.env?.VITE_SPOKEOPS_ENDPOINT) ||
-    "https://spokeops.web.app/api/v1/telemetry";
+    "https://spokeops-ingestion-541312712358.us-central1.run.app/api/v1/telemetry";
   private token =
     (typeof import.meta !== "undefined" && import.meta.env?.VITE_SPOKEOPS_TOKEN) ||
     "spk_live_hubspoke_b82f109";

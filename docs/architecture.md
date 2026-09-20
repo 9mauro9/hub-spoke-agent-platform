@@ -96,7 +96,17 @@ The **Hub-and-Spoke Agent Platform** implements the **Agentic Engineering Standa
   - Interactive Spoke dispatch console with payload editors.
   - Live FinOps token and cost reconciliation charts.
   - One-click Human-in-the-Loop (HITL) approval actions.
-  - Distributed trace explorer and DLQ inspection monitor.
+  - Operator RBAC persona switcher (`platform_operator`, `admin`, `viewer`).
+  - Native SpokeOps Telemetry client hook (`@/telemetry/spokeOpsClient`).
+
+### 2.5 SpokeOps Telemetry & Observability Integration (`spokeops/`)
+- **Central Ingestion API:** Cloud Run service `spokeops-ingestion` (`https://spokeops-ingestion-541312712358.us-central1.run.app`) in GCP project `spokeops-509217`.
+- **SpokeOps Web Operations Console:** Deployed on Firebase Hosting (`https://spokeops-509217.web.app`).
+- **Client Telemetry Module (`spokeOpsClient.ts`):**
+  - **Dynamic Dual-Cadence Heartbeat:** 2-minute active cadence shifting to 5-minute idle cadence when tab visibility is hidden.
+  - **Unload Beacons:** Uses `navigator.sendBeacon` and `keepalive: true` on `pagehide` and `beforeunload`.
+  - **Client-Side OWASP Scrubbing:** Redacts sensitive credentials (`token`, `password`, `apiKey`, `secret`, `auth`, `credential`).
+  - **Audit Hook Emission:** Emits structured events for `agent_task_started`, `agent_task_executed`, `agent_task_failed`, `policy_update`, and `permission_denied`.
 
 ---
 
@@ -117,3 +127,4 @@ All inter-agent messages conform to strict JSON schemas:
   - Collections: `agent_sessions`, `telemetry_records`, `audit_logs`, `hitl_tasks`.
 - **Artifact Store:** Cloud Storage bucket `gs://agent-research-artifacts`.
 - **Distributed Tracing:** OpenTelemetry SDK exported to Google Cloud Trace with standardized W3C `traceparent` headers propagation.
+- **Universal Observability (SpokeOps):** Real-time session presence tracking and immutable audit trails via `POST /api/v1/telemetry` authenticated with `x-spoke-token`.

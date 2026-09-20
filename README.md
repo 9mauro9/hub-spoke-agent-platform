@@ -146,7 +146,21 @@ flowchart LR
 
 ---
 
-## 6. Verification & Test Suite
+## 6. SpokeOps Observability & Audit Integration
+
+Under the **AES v3 Standard**, the platform operates as an authorized spoke within the centralized **SpokeOps Master Observability Platform**:
+
+- **Telemetry Client Module (`ui/web/src/telemetry/spokeOpsClient.ts`):** 
+  - Non-blocking client SDK initialized on web application bootstrap.
+  - **Dual-Cadence Heartbeats:** Emits heartbeats every 2 minutes while active / window focused, throttling back to 5 minutes when backgrounded or hidden.
+  - **Graceful Session Termination:** Uses `navigator.sendBeacon` and `fetch(..., { keepalive: true })` on window `visibilitychange` (`hidden`) and `beforeunload`.
+- **Client-Side OWASP Scrubbing:** Automatically scrubs API keys, bearer tokens, passwords, secrets, and authorization headers from event payloads before dispatching to SpokeOps.
+- **RBAC Audit Hooks:** Emits structured security events when operators execute control-plane actions (`agent_task_started`, `agent_task_executed`, `agent_task_failed`, `policy_update`, `permission_denied`).
+- **Control Plane Role Switcher:** Web UI header enables switching between `platform_operator`, `admin`, and `viewer` roles, with live telemetry connection indicator and footer stream badges.
+
+---
+
+## 7. Verification & Test Suite
 
 The platform includes full automated test coverage and an AES v3 compliance runner:
 
@@ -159,11 +173,14 @@ python verify_platform.py
 
 # Execute all unit and integration test suites
 pytest
+
+# Execute SpokeOps Telemetry Client verification
+npx tsx ui/web/test/spokeOpsClient.test.ts
 ```
 
 ---
 
-## 7. Directory Structure
+## 8. Directory Structure
 
 ```
 hub-spoke-agent-platform/
@@ -175,7 +192,7 @@ hub-spoke-agent-platform/
 ├── docs/                           # Consolidated platform documentation
 │   ├── architecture.md             # In-depth AES v3 architectural specifications
 │   ├── gcp_runbook.md              # Production Cloud Run deployment and ops runbook
-│   ├── api_contracts.md            # REST, SSE, and FastMCP schemas & protocols
+│   ├── api_contracts.md            # REST, SSE, FastMCP, and SpokeOps telemetry schemas
 │   └── aes_v3_compliance_report.md # Automated AES v3 compliance verification report
 ├── hub/
 │   ├── Dockerfile                  # Master Orchestrator container manifest
@@ -189,6 +206,10 @@ hub-spoke-agent-platform/
 │   ├── contracts/                  # Pydantic models & Dead-Letter Queue manager
 │   ├── security/                   # Model Armor and Principal Access Boundary policies
 │   └── telemetry/                  # FinOps estimator, reconciler, and OpenTelemetry setup
+├── spokeops/                       # Centralized Observability & Ingestion Engine
+│   ├── server/                     # Express ingestion API (authTenant, OWASP sanitizer, reaper)
+│   ├── src/                        # Operations Console SPA (sessions, audit explorer, masking)
+│   └── README.md                   # SpokeOps architecture & tenant registration
 ├── spokes/
 │   ├── housekeeper/                # Spoke 1: Repository hygiene & Firestore audit
 │   │   ├── Dockerfile
@@ -203,6 +224,8 @@ hub-spoke-agent-platform/
 │   ├── README.md                   # Dashboard setup and Cloud Run deployment guide
 │   ├── nginx.conf                  # Nginx proxy configuration
 │   └── web/                        # React / Vite / Tailwind / React Flow frontend
+│       ├── test/                   # SpokeOps client telemetry verification suite
+│       └── src/telemetry/          # SpokeOps drop-in client SDK & audit hooks
 ├── tests/                          # 30 unit and integration tests
 ├── verify_platform.py              # AES v3 End-to-End Platform Verification Runner
 ├── cloudbuild.yaml                 # Multi-container production Cloud Build pipeline
@@ -211,14 +234,15 @@ hub-spoke-agent-platform/
 
 ---
 
-## 8. Documentation Index
+## 9. Documentation Index
 
 All platform documentation is consolidated directly in this repository:
 - [System Architecture](docs/architecture.md) — Comprehensive AES v3 multi-agent architecture and dataflow.
 - [GCP Operations Runbook](docs/gcp_runbook.md) — Production deployment guides, Cloud Run commands, and monitoring.
-- [API Contracts & Protocols](docs/api_contracts.md) — REST, SSE, JSON-RPC FastMCP, and Pub/Sub event schemas.
+- [API Contracts & Protocols](docs/api_contracts.md) — REST, SSE, JSON-RPC FastMCP, and SpokeOps telemetry event schemas.
 - [AES v3 Compliance Report](docs/aes_v3_compliance_report.md) — Automated compliance audit results for all AES v3 deliverables.
 - [Hub Master Orchestrator Guide](hub/README.md) — LangGraph 7-node orchestration and SSE streaming.
 - [Spoke 1 Housekeeper Guide](spokes/housekeeper/README.md) — Repository hygiene and Firestore audits.
 - [Spoke 2 Video Ingest Guide](spokes/video-ingest/README.md) — Multimodal video extraction with Gemini.
 - [Web Control Center Guide](ui/README.md) — React dashboard and Cloud Run proxy deployment.
+- [SpokeOps Platform Guide](spokeops/README.md) — Centralized telemetry ingestion, session reaper, and RBAC observability.

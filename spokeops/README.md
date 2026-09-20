@@ -26,8 +26,9 @@ flowchart TD
         AT["Academy Timeliner"]
         AB["Academy Builder"]
         AV["Avventiq Enterprise"]
+        HS["Hub-Spoke Agent Platform"]
         SDK["@spokeops/telemetry SDK\n(Dual-Cadence Heartbeat & Scrubbing)"]
-        AL & AT & AB & AV --> SDK
+        AL & AT & AB & AV & HS --> SDK
     end
 
     subgraph CentralIngestion ["Central Ingestion Engine (Cloud Run / Node.js)"]
@@ -77,7 +78,7 @@ flowchart TD
    - OWASP sanitization middleware redacting passwords, bearer tokens, API keys, and credit cards.
    - Automated session reaper marking sessions with `lastHeartbeat > 6 minutes` as `timed_out`.
 3. **SpokeOps Web Console:**
-   - **Dynamic Tenant Switcher:** Filter by All Applications, Academy Library, Academy Timeliner, Academy Builder, or Avventiq.
+   - **Dynamic Tenant Switcher:** Filter by All Applications, Academy Library, Academy Timeliner, Academy Builder, Avventiq, or Hub-Spoke Agent Platform (`hub-spoke-agent-platform`).
    - **User Presence & Session Monitor:** Tabular view, pulsing status indicators, real-time `Xh Ym Zs` counters, device environment breakdown.
    - **Audit Explorer:** Chronological feed with color-coded severity (`SUCCESS`, `WARNING`, `DENIED`), and a slide-out Contextual JSON Drawer preserving table scroll position.
    - **Help Desk Persona & Masking Engine:**
@@ -191,6 +192,32 @@ logAuditEvent({
   metadata: {
     syllabusRevision: 4,
     approvedBy: 'curriculum_lead'
+  }
+});
+
+// 3. Hub-Spoke Agent Platform Workflow Integration
+initSpokeOps({
+  appId: 'hub-spoke-agent-platform',
+  spokeToken: process.env.VITE_SPOKEOPS_TOKEN,
+  endpointUrl: 'https://spokeops-ingestion-541312712358.us-central1.run.app/api/v1/telemetry',
+  user: {
+    userId: 'platform-operator-1',
+    email: 'operator@enterprise.internal',
+    roles: ['platform_operator']
+  },
+  environment: 'production'
+});
+
+// Emit agent workflow audit event
+logAuditEvent({
+  action: 'agent_task_executed',
+  resourceType: 'agent_session',
+  resourceId: 'sess-aes3-001',
+  status: 'success',
+  metadata: {
+    spokeId: 'spoke-housekeeper',
+    toolName: 'clean_repository_noise',
+    tokenCostUsd: 0.000024
   }
 });
 ```

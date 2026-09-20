@@ -24,6 +24,10 @@
 | **Spoke 2** | Multimodal Video Ingest | `spokes/video-ingest/app/video_parser.py`<br>Gemini multimodal reasoning + GCS streaming | **PASSED** |
 | **Spoke 2** | FinOps Duration Gate | `spokes/video-ingest/app/main.py`<br>45-min runtime ceiling gate -> HITL escalation | **PASSED** |
 | **Spoke 2** | Progressive Disclosure Skill | `.agents/skills/spoke-video-ingest/SKILL.md` | **PASSED** |
+| **SpokeOps Integration** | Client Telemetry SDK | `ui/web/src/telemetry/spokeOpsClient.ts`<br>Dual-cadence heartbeat (2m active / 5m idle) + unload beacons | **PASSED** |
+| **SpokeOps Integration** | OWASP PII Sanitization | `ui/web/src/telemetry/spokeOpsClient.ts`<br>Client-side credential redaction before transit | **PASSED** |
+| **Control Plane RBAC** | Role Enforcement & Auditing | `ui/web/src/context/AuthContext.tsx`<br>Role boundary checks + `permission_denied` audit hooks | **PASSED** |
+| **Workflow Observability** | Execution & Tool Audit Logs | `ui/web/src/views/LauncherView.tsx`<br>`ui/web/src/hooks/useHubStream.ts`<br>`agent_task_started` & `agent_task_executed` logging | **PASSED** |
 
 ---
 

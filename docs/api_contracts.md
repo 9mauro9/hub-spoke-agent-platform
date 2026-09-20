@@ -169,3 +169,65 @@ FastMCP tools are implemented via MCP JSON-RPC protocol over standard stdio or H
 - `analyze_video_research`:
   - Input: `{"video_source": str, "session_id": str, "max_duration_seconds": int}`
   - Output: `{"status": str, "gcs_uri": str, "summary": str, "action_items": list[str]}`
+
+---
+
+## 4. SpokeOps Telemetry & Observability API Contract
+
+Base URL: `https://spokeops-ingestion-541312712358.us-central1.run.app`
+
+### 4.1 Master Telemetry Ingestion Endpoint
+- **Endpoint:** `POST /api/v1/telemetry`
+- **Request Headers:**
+  - `Content-Type: application/json`
+  - `x-spoke-token: <SPOKEOPS_TENANT_TOKEN>` (Mandatory SHA-256 validated secret token)
+  - `x-spoke-app-id: <appId>` (e.g. `hub-spoke-agent-platform`)
+
+#### A. Session Heartbeat Payload
+```json
+{
+  "type": "session_heartbeat",
+  "appId": "hub-spoke-agent-platform",
+  "sessionId": "sess_a8f9c1b2_1726848000",
+  "userId": "usr_hub_op_01",
+  "userEmail": "operator@hub-spoke.net",
+  "userRoles": ["platform_operator"],
+  "status": "active",
+  "clientMetadata": {
+    "userAgent": "Mozilla/5.0 ...",
+    "viewport": "1920x1080",
+    "path": "/launcher"
+  }
+}
+```
+*Note: Status cycles dynamically between `"active"` (2-minute cadence), `"idle"` (5-minute cadence on tab blur/hide), and `"closed"` (on unload beacon).*
+
+#### B. Autonomous Workflow Audit Event Payload
+```json
+{
+  "type": "audit_event",
+  "appId": "hub-spoke-agent-platform",
+  "sessionId": "sess_a8f9c1b2_1726848000",
+  "userId": "usr_hub_op_01",
+  "userEmail": "operator@hub-spoke.net",
+  "roleAtExecution": "platform_operator",
+  "action": "agent_task_started",
+  "resourceType": "agent_workflow",
+  "resourceId": "ui-sess-7b19a0c2",
+  "status": "success",
+  "metadata": {
+    "targetAgent": "spoke-housekeeper",
+    "action": "clean_repo_noise",
+    "sourceApp": "core-hub",
+    "promptLength": 48
+  },
+  "timestamp": "2026-09-20T17:40:00.000Z"
+}
+```
+
+#### Supported Audit Actions:
+- `agent_task_started`: Fired upon dispatch of a Spoke workflow.
+- `agent_task_executed`: Emitted on tool and LangGraph node executions with execution duration metrics.
+- `agent_task_failed`: Emitted upon execution or dispatch failure.
+- `policy_update`: Emitted when an operator signs off on HITL gates or updates FinOps spend caps.
+- `permission_denied`: Emitted when RBAC boundaries prevent unauthorized route or action execution.

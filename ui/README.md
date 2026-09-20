@@ -47,14 +47,28 @@ npm run dev
 ```
 Open `http://localhost:5173` in your browser.
 
+## SpokeOps Telemetry & Observability (AES v3 Standard)
+
+The Web Management Dashboard natively integrates as an authorized Spoke into the **SpokeOps Master Observability Platform**:
+- **Dual-Cadence Heartbeat:**
+  - Emits active heartbeat pings every **2 minutes (120,000ms)** while active.
+  - Automatically shifts down to an idle **5-minute (300,000ms)** cadence when `document.visibilityState === "hidden"`.
+  - Dispatches session termination beacons via `navigator.sendBeacon` and `keepalive: true` on tab closure.
+- **Operator RBAC Persona Switcher:**
+  - Header controls allow toggling between `Operator`, `Admin`, and `Viewer`.
+  - Enforces Principal Access Boundaries and emits `permission_denied` audit logs upon restricted route access attempts.
+- **Workflow & Tool Audit Hooks:**
+  - Emits `agent_task_started` on task dispatch.
+  - Emits `agent_task_executed` for tool executions (`analyzer_agent`, `dispatch_task`, `validation_node`, etc.) with duration metrics.
+  - Emits `policy_update` on HITL gate sign-offs and FinOps budget cap adjustments.
+
 ## Cloud Run & Container Deployment
 
 ### 1. Multi-Stage Container Build
 The production container is built using multi-stage Docker packaging (`ui/Dockerfile`), compiling TypeScript and React static assets with Node.js and serving them with optimized Nginx:
 ```bash
-# Build locally
-docker build -t hub-spoke-web-ui -f ui/Dockerfile ui/
-docker run -p 8080:8080 hub-spoke-web-ui
+# Build with Google Cloud Build
+gcloud builds submit --tag=us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform/hub-spoke-web-ui:latest -f ui/Dockerfile ui/ --project=hub-spoke-agent-platform
 ```
 
 ### 2. Deploy to Google Cloud Run (Production)
@@ -70,6 +84,8 @@ gcloud run deploy hub-spoke-web-ui \
 
 ### 3. Service Verification
 - **Production Dashboard URL:** [https://hub-spoke-web-ui-60727530657.us-central1.run.app](https://hub-spoke-web-ui-60727530657.us-central1.run.app)
+- **SpokeOps Telemetry Ingestion Endpoint:** [https://spokeops-ingestion-541312712358.us-central1.run.app/api/v1/telemetry](https://spokeops-ingestion-541312712358.us-central1.run.app/api/v1/telemetry)
+- **SpokeOps Central Console:** [https://spokeops-509217.web.app](https://spokeops-509217.web.app)
 - **Health Check:**
 ```bash
 curl https://hub-spoke-web-ui-60727530657.us-central1.run.app/healthz

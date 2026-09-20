@@ -14,14 +14,16 @@
 
 ## 2. Production Service Endpoints
 
-All four platform services are deployed and operational on Google Cloud Run:
+All core platform and observability services are deployed and operational on Google Cloud Run and Firebase:
 
-| Service Name | Description | Cloud Run Service URL | Health Endpoint |
+| Service Name | Description | Cloud Run / Hosting URL | Health Endpoint |
 |---|---|---|---|
 | **`master-orchestrator`** | Central Hub Orchestrator (FastAPI + LangGraph) | `https://master-orchestrator-60727530657.us-central1.run.app` | `GET /health` |
 | **`spoke-housekeeper`** | Spoke 1 Housekeeper (FastMCP + Pub/Sub Worker) | `https://spoke-housekeeper-60727530657.us-central1.run.app` | `GET /health` |
 | **`spoke-video-ingest`** | Spoke 2 Video Ingest (Multimodal Gemini Ingest) | `https://spoke-video-ingest-60727530657.us-central1.run.app` | `GET /health` |
-| **`hub-spoke-web-ui`** | Web Control Center (React UI + Nginx Proxy) | `https://hub-spoke-web-ui-60727530657.us-central1.run.app` | `GET /` |
+| **`hub-spoke-web-ui`** | Web Control Center (React UI + Nginx Proxy) | `https://hub-spoke-web-ui-60727530657.us-central1.run.app` | `GET /healthz` |
+| **`spokeops-ingestion`** | SpokeOps Central Telemetry Ingestion API | `https://spokeops-ingestion-541312712358.us-central1.run.app` | `GET /api/v1/health` |
+| **`spokeops-509217`** | SpokeOps Master Operations Console | `https://spokeops-509217.web.app` | `GET /` |
 
 ---
 
@@ -108,9 +110,11 @@ gcloud run deploy spoke-video-ingest \
 ```
 
 ### 4.4 Web Control Center UI
+Build and deploy the React UI with SpokeOps Telemetry Client:
 ```bash
-gcloud builds submit ui/ \
+gcloud builds submit \
   --tag=us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform/hub-spoke-web-ui:latest \
+  -f ui/Dockerfile ui/ \
   --project=hub-spoke-agent-platform
 
 gcloud run deploy hub-spoke-web-ui \
@@ -125,24 +129,58 @@ gcloud run deploy hub-spoke-web-ui \
 
 ## 5. Verification & Health Monitoring
 
-### 5.1 Automated Test Suite
+### 5.1 Automated Backend & Contract Test Suite
 Run local unit and integration tests:
 ```bash
 ./.venv/bin/pytest -v
 ```
 *(All 30 unit and integration tests covering FinOps, DLQ, FastMCP, Model Armor, and LangGraph workflow)*
 
-### 5.2 End-to-End AES v3 Verification Script
+### 5.2 SpokeOps Telemetry Client Test Suite
+Execute the frontend client SDK verification:
+```bash
+npx tsx ui/web/test/spokeOpsClient.test.ts
+```
+*(Validates dual-cadence timer, OWASP secret redaction, unload beacon fallback, and tenant token authentication)*
+
+### 5.3 End-to-End AES v3 Verification Script
 Run the automated end-to-end verification script:
 ```bash
 ./.venv/bin/python verify_platform.py
 ```
-This validates all 7 core AES v3 requirements against live or local components and generates `docs/aes_v3_compliance_report.md`.
+This validates all core AES v3 requirements against live or local components and generates `docs/aes_v3_compliance_report.md`.
 
-### 5.3 Live Endpoint Health Check
+### 5.4 Live Endpoint Health Checks
 ```bash
+# Core Hub-and-Spoke Services
 curl -i https://master-orchestrator-60727530657.us-central1.run.app/health
 curl -i https://spoke-housekeeper-60727530657.us-central1.run.app/health
 curl -i https://spoke-video-ingest-60727530657.us-central1.run.app/health
-curl -i https://hub-spoke-web-ui-60727530657.us-central1.run.app/
+curl -i https://hub-spoke-web-ui-60727530657.us-central1.run.app/healthz
+
+# SpokeOps Observability Services
+curl -i https://spokeops-ingestion-541312712358.us-central1.run.app/api/v1/health
+curl -i https://spokeops-509217.web.app
+```
+
+### 5.5 Verify SpokeOps Live Ingestion Pipeline
+Verify that telemetry payloads from `hub-spoke-agent-platform` are successfully ingested:
+```bash
+curl -X POST https://spokeops-ingestion-541312712358.us-central1.run.app/api/v1/telemetry \
+  -H "Content-Type: application/json" \
+  -H "x-spoke-token: spk_live_hubspoke_b82f109" \
+  -d '{
+    "appId": "hub-spoke-agent-platform",
+    "sessionId": "runbook-verify-session",
+    "eventType": "heartbeat",
+    "timestamp": "2026-09-20T18:00:00Z",
+    "userId": "platform-operator-1",
+    "userRole": "platform_operator",
+    "state": "active",
+    "environment": "production"
+  }'
+```
+Expected response:
+```json
+{"status":"accepted","received":true,"sessionId":"runbook-verify-session"}
 ```
