@@ -38,6 +38,7 @@ The **Video Ingest Spoke** is a high-performance worker microservice designed to
 | Parameter | Production Value |
 |---|---|
 | **Service Name** | `spoke-video-ingest` |
+| **Service URL** | [https://spoke-video-ingest-60727530657.us-central1.run.app](https://spoke-video-ingest-60727530657.us-central1.run.app) |
 | **GCP Project** | `hub-spoke-agent-platform` |
 | **Region** | `us-central1` |
 | **Runtime** | Python 3.11 |
@@ -46,3 +47,4 @@ The **Video Ingest Spoke** is a high-performance worker microservice designed to
 | **CPU / Memory** | `2 vCPU` / `2Gi` |
 | **Min / Max Instances** | `0` (Scale to Zero) / `10` |
 | **Request Timeout** | `900s` (15 minutes) |
+

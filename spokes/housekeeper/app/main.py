@@ -13,6 +13,9 @@ from shared.contracts.task_models import AgentTaskRequest, AgentTaskResponse, Ex
 from shared.contracts.dlq import DeadLetterQueueManager
 from shared.telemetry.otel import get_tracer
 from spokes.housekeeper.app.mcp.server import HousekeeperMCPServer
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+
 
 logger = logging.getLogger("SpokeHousekeeper")
 tracer = get_tracer("spoke-housekeeper")
@@ -142,3 +145,63 @@ class SpokeHousekeeperWorker:
 
 # Default worker instance
 worker = SpokeHousekeeperWorker()
+
+# FastAPI Service Application for Cloud Run & Pub/Sub push
+app = FastAPI(
+    title="Spoke Housekeeper Service",
+    description="Repository Hygiene, Markdown Auditing & Firestore Security Auditor for AES v3 Platform",
+    version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.post("/tasks/execute")
+async def execute_task(request: Request):
+    """
+    Pub/Sub Push and REST Dispatch endpoint.
+    """
+    body = await request.json()
+    if "message" in body and "data" in body["message"]:
+        import base64
+        import json
+        decoded_bytes = base64.b64decode(body["message"]["data"])
+        task_data = json.loads(decoded_bytes.decode("utf-8"))
+    else:
+        task_data = body
+
+    response = worker.process_task(task_data)
+    return response.model_dump()
+
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "spoke-housekeeper",
+        "standard": "AES v3",
+    }
+
+
+@app.post("/mcp")
+async def mcp_endpoint(request: Request):
+    """
+    Model Context Protocol JSON-RPC endpoint.
+    """
+    raw_body = await request.body()
+    rpc_response = worker.mcp_server.handle_json_rpc(raw_body.decode("utf-8"))
+    import json
+    return json.loads(rpc_response)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8080))
+    uvicorn.run("spokes.housekeeper.app.main:app", host="0.0.0.0", port=port, reload=False)
+

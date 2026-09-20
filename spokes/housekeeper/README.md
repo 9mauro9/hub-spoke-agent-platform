@@ -58,6 +58,7 @@ flowchart LR
 | Parameter | Production Value |
 |---|---|
 | **Service Name** | `spoke-housekeeper` |
+| **Service URL** | [https://spoke-housekeeper-60727530657.us-central1.run.app](https://spoke-housekeeper-60727530657.us-central1.run.app) |
 | **GCP Project** | `hub-spoke-agent-platform` |
 | **Region** | `us-central1` |
 | **CPU / Memory** | `1 vCPU` / `1Gi` |
@@ -65,3 +66,4 @@ flowchart LR
 | **Max Instances** | `5` |
 | **Timeout** | `180s` |
 | **MCP Port** | `8080` |
+

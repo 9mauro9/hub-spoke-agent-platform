@@ -87,10 +87,12 @@ Returns service health and active GCP project configuration.
 | Parameter | Production Value |
 |---|---|
 | **Service Name** | `master-orchestrator` |
+| **Service URL** | [https://master-orchestrator-60727530657.us-central1.run.app](https://master-orchestrator-60727530657.us-central1.run.app) |
 | **GCP Project** | `hub-spoke-agent-platform` |
 | **Region** | `us-central1` |
 | **CPU / Memory** | `2 vCPU` / `2Gi` |
 | **Min / Max Instances** | `1` / `10` |
 | **Concurrency** | `80` |
 | **Request Timeout** | `300s` |
-| **Ingress** | Internal & Cloud Load Balancing |
+| **Ingress** | Internal & Cloud Load Balancing / Public |
+

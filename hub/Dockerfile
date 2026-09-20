@@ -12,10 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY hub/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy shared modules and hub code
+# Copy shared modules, spokes, and hub code
 COPY shared/ /app/shared/
 COPY config/ /app/config/
+COPY spokes/ /app/spokes/
 COPY hub/app/ /app/hub/app/
+
 
 ENV PYTHONPATH=/app
 ENV PORT=8080

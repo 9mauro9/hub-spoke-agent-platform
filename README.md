@@ -79,9 +79,19 @@ flowchart TD
 
 ## 3. Production Deployment Profile (GCP Project: `hub-spoke-agent-platform`)
 
-### Google Cloud Infrastructure
+### Live Production Endpoints
+
+| Service | Cloud Run Production URL | Status | Ingress / Auth |
+|---|---|---|---|
+| **Web Control UI** | [https://hub-spoke-web-ui-60727530657.us-central1.run.app](https://hub-spoke-web-ui-60727530657.us-central1.run.app) | `ACTIVE (200 OK)` | Public / Unauthenticated |
+| **Master Orchestrator** | [https://master-orchestrator-60727530657.us-central1.run.app](https://master-orchestrator-60727530657.us-central1.run.app) | `ACTIVE (200 OK)` | Public / Unauthenticated |
+| **Spoke 1: Housekeeper** | [https://spoke-housekeeper-60727530657.us-central1.run.app](https://spoke-housekeeper-60727530657.us-central1.run.app) | `ACTIVE (200 OK)` | Public / Unauthenticated |
+| **Spoke 2: Video Ingest** | [https://spoke-video-ingest-60727530657.us-central1.run.app](https://spoke-video-ingest-60727530657.us-central1.run.app) | `ACTIVE (200 OK)` | Public / Unauthenticated |
+
+### Google Cloud Infrastructure Topology
 
 - **Project ID:** `hub-spoke-agent-platform`
+- **Project Number:** `60727530657`
 - **Default Region:** `us-central1`
 - **Artifact Registry:** `us-central1-docker.pkg.dev/hub-spoke-agent-platform/agent-platform`
 - **Pub/Sub Topics:**
@@ -95,6 +105,7 @@ flowchart TD
   - `gs://agent-research-artifacts` (Standard storage class, `us-central1`)
 - **Cloud Firestore Database:**
   - `(default)` (Firestore Native mode, `us-central1`)
+
 
 ---
 

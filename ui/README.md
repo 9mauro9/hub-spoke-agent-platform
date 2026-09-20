@@ -69,8 +69,14 @@ gcloud run deploy hub-spoke-web-ui \
 ```
 
 ### 3. Service Verification
-Test the health probe:
+- **Production Dashboard URL:** [https://hub-spoke-web-ui-60727530657.us-central1.run.app](https://hub-spoke-web-ui-60727530657.us-central1.run.app)
+- **Health Check:**
 ```bash
-curl https://hub-spoke-web-ui-<hash>-uc.a.run.app/healthz
+curl https://hub-spoke-web-ui-60727530657.us-central1.run.app/healthz
 ```
+- **Backend Proxy Verification:**
+```bash
+curl https://hub-spoke-web-ui-60727530657.us-central1.run.app/api/v1/spokes
+```
+
 
