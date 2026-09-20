@@ -75,17 +75,25 @@ try {
   firestoreDb = null;
 }
 
+export function getFirestoreDb(): Firestore | null {
+  return firestoreDb;
+}
+
 /**
  * Observable Map that triggers Firestore synchronization upon mutations
  */
 class ObservableSessionMap extends Map<string, SessionDoc> {
+  public isHydrating = false;
+
   override set(key: string, value: SessionDoc): this {
     super.set(key, value);
-    persistSessionToFirestore(value).catch((err) => {
-      if (process.env.NODE_ENV !== 'test') {
-        console.warn(`[SpokeOps Store] Non-blocking Firestore session sync failure for ${key}:`, err.message);
-      }
-    });
+    if (!this.isHydrating) {
+      persistSessionToFirestore(value).catch((err) => {
+        if (process.env.NODE_ENV !== 'test') {
+          console.warn(`[SpokeOps Store] Non-blocking Firestore session sync failure for ${key}:`, err.message);
+        }
+      });
+    }
     return this;
   }
 }
@@ -174,8 +182,11 @@ export const seedTenants: TenantRegistryDoc[] = [
     appName: 'Avventiq Enterprise',
     environment: 'production',
     allowedOrigins: [
+      'https://avventiq.com',
+      'https://www.avventiq.com',
       'https://app.avventiq.com',
       'https://avventiq.web.app',
+      'https://avventiq.firebaseapp.com',
       'http://localhost:3000'
     ],
     spokeTokenHash: sha256('spk_live_avventiq_e554109'),
@@ -257,16 +268,17 @@ export async function loadStateFromFirestore(): Promise<void> {
   try {
     // 1. Sync / load tenant registry
     for (const tenant of seedTenants) {
-      await firestoreDb.doc(`registry/tenants/${tenant.appId}`).set(tenant, { merge: true });
       await firestoreDb.doc(`tenants/${tenant.appId}`).set(tenant, { merge: true });
     }
 
     // 2. Load non-closed sessions (active, idle, timed_out) from Firestore /sessions
+    sessionsStore.isHydrating = true;
     const sessionsSnapshot = await firestoreDb.collection('sessions').limit(200).get();
     for (const doc of sessionsSnapshot.docs) {
       const s = doc.data() as SessionDoc;
       sessionsStore.set(s.sessionId, s);
     }
+    sessionsStore.isHydrating = false;
 
     // 3. Load recent 200 audit events from Firestore /events
     const eventsSnapshot = await firestoreDb.collection('events').limit(200).get();
@@ -284,6 +296,7 @@ export async function loadStateFromFirestore(): Promise<void> {
       `[SpokeOps Store] Successfully restored ${sessionsStore.size} sessions and ${eventsStore.length} audit events from Cloud Firestore.`
     );
   } catch (err: any) {
+    sessionsStore.isHydrating = false;
     console.warn('[SpokeOps Store] Could not restore state from Cloud Firestore:', err.message);
   }
 }

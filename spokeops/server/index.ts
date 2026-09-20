@@ -6,7 +6,9 @@ import {
   getTenantRegistry,
   getSessionsStore,
   getEventsStore,
+  getFirestoreDb,
   recordAuditEvent,
+  loadStateFromFirestore,
   SessionDoc,
   AuditEventDoc
 } from './store';
@@ -159,19 +161,41 @@ app.get('/api/v1/tenants', (_req: Request, res: Response) => {
 /**
  * Sessions Query: GET /api/v1/sessions
  */
-app.get('/api/v1/sessions', (req: Request, res: Response) => {
+app.get('/api/v1/sessions', async (req: Request, res: Response) => {
   const { appId, status, search, limit } = req.query;
-  const sessions = getSessionsStore();
-  let list = Array.from(sessions.values());
+  const db = getFirestoreDb();
+  let list: SessionDoc[] = [];
 
-  // Filter by tenant appId
-  if (appId && appId !== 'all') {
-    list = list.filter((s) => s.appId === appId);
+  if (db && process.env.NODE_ENV !== 'test') {
+    try {
+      let query: any = db.collection('sessions');
+      if (appId && appId !== 'all') {
+        query = query.where('appId', '==', appId);
+      }
+      if (status && status !== 'all') {
+        query = query.where('status', '==', status);
+      }
+      const snapshot = await query.limit(200).get();
+      snapshot.forEach((doc: any) => {
+        list.push(doc.data() as SessionDoc);
+      });
+    } catch (err: any) {
+      console.warn('[SpokeOps API] Firestore sessions query error:', err.message);
+    }
   }
 
-  // Filter by status
-  if (status && status !== 'all') {
-    list = list.filter((s) => s.status === status);
+  // Fallback to in-memory sessions if Firestore empty or offline
+  if (list.length === 0) {
+    const sessions = getSessionsStore();
+    list = Array.from(sessions.values());
+
+    if (appId && appId !== 'all') {
+      list = list.filter((s) => s.appId === appId);
+    }
+
+    if (status && status !== 'all') {
+      list = list.filter((s) => s.status === status);
+    }
   }
 
   // Filter by search query (email, userId, sessionId)
@@ -249,21 +273,47 @@ app.post('/api/v1/sessions/disconnect', (req: Request, res: Response) => {
 /**
  * Audit Events Query: GET /api/v1/events
  */
-app.get('/api/v1/events', (req: Request, res: Response) => {
+app.get('/api/v1/events', async (req: Request, res: Response) => {
   const { appId, status, action, search, limit } = req.query;
-  const events = getEventsStore();
-  let list = [...events];
+  const db = getFirestoreDb();
+  let list: AuditEventDoc[] = [];
 
-  if (appId && appId !== 'all') {
-    list = list.filter((e) => e.appId === appId);
+  if (db && process.env.NODE_ENV !== 'test') {
+    try {
+      let query: any = db.collection('events');
+      if (appId && appId !== 'all') {
+        query = query.where('appId', '==', appId);
+      }
+      if (status && status !== 'all') {
+        query = query.where('status', '==', status);
+      }
+      if (action && action !== 'all') {
+        query = query.where('action', '==', action);
+      }
+      const snapshot = await query.limit(200).get();
+      snapshot.forEach((doc: any) => {
+        list.push(doc.data() as AuditEventDoc);
+      });
+    } catch (err: any) {
+      console.warn('[SpokeOps API] Firestore events query error:', err.message);
+    }
   }
 
-  if (status && status !== 'all') {
-    list = list.filter((e) => e.status === status);
-  }
+  if (list.length === 0) {
+    const events = getEventsStore();
+    list = [...events];
 
-  if (action && action !== 'all') {
-    list = list.filter((e) => e.action === action);
+    if (appId && appId !== 'all') {
+      list = list.filter((e) => e.appId === appId);
+    }
+
+    if (status && status !== 'all') {
+      list = list.filter((e) => e.status === status);
+    }
+
+    if (action && action !== 'all') {
+      list = list.filter((e) => e.action === action);
+    }
   }
 
   if (search && typeof search === 'string') {
@@ -302,9 +352,14 @@ app.post('/api/v1/reap-sessions', (_req: Request, res: Response) => {
 // Start server and initialize 5-minute background reaper scheduler only if executed directly
 let server: any;
 if (process.env.NODE_ENV !== 'test' && (!process.argv[1] || process.argv[1].includes('server/index'))) {
-  server = app.listen(PORT, () => {
+  server = app.listen(PORT, async () => {
     console.log(`[SpokeOps Ingestion API] Server running on http://localhost:${PORT}`);
     startReaperScheduler(5 * 60 * 1000);
+    try {
+      await loadStateFromFirestore();
+    } catch (err: any) {
+      console.warn('[SpokeOps Ingestion API] Initial state load failure:', err.message);
+    }
   });
 }
 
