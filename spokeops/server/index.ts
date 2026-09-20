@@ -6,6 +6,7 @@ import {
   getTenantRegistry,
   getSessionsStore,
   getEventsStore,
+  recordAuditEvent,
   SessionDoc,
   AuditEventDoc
 } from './store';
@@ -134,7 +135,7 @@ app.post(
         metadata: auditData.metadata || {},
         timestamp: auditData.timestamp || nowIso
       };
-      events.unshift(eventDoc); // Keep newest at the top
+      recordAuditEvent(eventDoc);
     }
 
     res.status(200).json({
@@ -218,8 +219,7 @@ app.post('/api/v1/sessions/disconnect', (req: Request, res: Response) => {
   sessions.set(sessionId, session);
 
   // Log an audit event for the eviction
-  const events = getEventsStore();
-  events.unshift({
+  recordAuditEvent({
     eventId: `evt_evict_${Date.now()}`,
     appId: session.appId,
     sessionId: session.sessionId,

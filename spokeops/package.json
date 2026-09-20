@@ -13,6 +13,7 @@
     "test:api": "tsx test/verify-platform.ts"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^9.2.0",
     "@tanstack/react-query": "^5.28.4",
     "clsx": "^2.1.0",
     "cors": "^2.8.5",

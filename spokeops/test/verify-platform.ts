@@ -79,10 +79,12 @@ async function runVerification() {
       const registry = getTenantRegistry();
       assert.strictEqual(registry.has('academy-library'), true);
       assert.strictEqual(registry.has('academy-timeliner'), true);
+      assert.strictEqual(registry.has('academy-toolkit'), true);
       assert.strictEqual(registry.has('academy-builder'), true);
+      assert.strictEqual(registry.has('academy-insight'), true);
       assert.strictEqual(registry.has('avventiq'), true);
       assert.strictEqual(registry.has('hub-spoke-agent-platform'), true);
-      assert.strictEqual(registry.size, 5);
+      assert.strictEqual(registry.size, 7);
     });
 
     await test('Rejects telemetry ingestion without x-spoke-token (HTTP 401)', async () => {
