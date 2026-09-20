@@ -213,6 +213,8 @@ class SpokeOpsClient {
     };
 
     this.sendBeaconUnload(payload);
+    this.sessionId = '';
+    this.config = null;
     this.isInitialized = false;
   }
 

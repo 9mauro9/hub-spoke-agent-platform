@@ -35,7 +35,19 @@ export const useSessions = (options: UseSessionsOptions = {}) => {
     }
   });
 
-  let sessions = query.data || [];
+  const now = Date.now();
+  const TIMEOUT_MS = 6 * 60 * 1000;
+
+  // Resolve dynamic presence status
+  let sessions = (query.data || []).map((s) => {
+    if (s.status === 'active' || s.status === 'idle') {
+      const elapsed = now - new Date(s.lastHeartbeat).getTime();
+      if (elapsed > TIMEOUT_MS) {
+        return { ...s, status: 'timed_out' as const };
+      }
+    }
+    return s;
+  });
 
   // Filter by status
   if (statusFilter !== 'all') {

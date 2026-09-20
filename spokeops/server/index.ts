@@ -12,7 +12,7 @@ import {
   SessionDoc,
   AuditEventDoc
 } from './store';
-import { reapStaleSessions, startReaperScheduler } from './services/sessionReaper';
+import { reapStaleSessions, reapStaleSessionsAsync, startReaperScheduler, TIMEOUT_THRESHOLD_MS } from './services/sessionReaper';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -172,9 +172,6 @@ app.get('/api/v1/sessions', async (req: Request, res: Response) => {
       if (appId && appId !== 'all') {
         query = query.where('appId', '==', appId);
       }
-      if (status && status !== 'all') {
-        query = query.where('status', '==', status);
-      }
       const snapshot = await query.limit(200).get();
       snapshot.forEach((doc: any) => {
         list.push(doc.data() as SessionDoc);
@@ -192,10 +189,39 @@ app.get('/api/v1/sessions', async (req: Request, res: Response) => {
     if (appId && appId !== 'all') {
       list = list.filter((s) => s.appId === appId);
     }
+  }
 
-    if (status && status !== 'all') {
-      list = list.filter((s) => s.status === status);
+  // Evaluate real-time staleness dynamically:
+  // If a session has not had a heartbeat within TIMEOUT_THRESHOLD_MS (6 minutes),
+  // transition it from active/idle to timed_out and persist the update.
+  const now = Date.now();
+  const staleToPersist: SessionDoc[] = [];
+
+  list = list.map((session) => {
+    if (session.status === 'active' || session.status === 'idle') {
+      const lastHeartbeatMs = new Date(session.lastHeartbeat).getTime();
+      const elapsed = now - lastHeartbeatMs;
+
+      if (elapsed > TIMEOUT_THRESHOLD_MS) {
+        const timedOut: SessionDoc = { ...session, status: 'timed_out' };
+        staleToPersist.push(timedOut);
+        return timedOut;
+      }
     }
+    return session;
+  });
+
+  // Non-blocking asynchronous persistence of newly swept sessions
+  if (staleToPersist.length > 0) {
+    const sessions = getSessionsStore();
+    for (const s of staleToPersist) {
+      sessions.set(s.sessionId, s);
+    }
+  }
+
+  // Filter by status AFTER dynamic staleness evaluation
+  if (status && status !== 'all') {
+    list = list.filter((s) => s.status === status);
   }
 
   // Filter by search query (email, userId, sessionId)
@@ -223,7 +249,7 @@ app.get('/api/v1/sessions', async (req: Request, res: Response) => {
  * Disconnect/Evict Session: POST /api/v1/sessions/disconnect
  * Permitted for Ops Admin
  */
-app.post('/api/v1/sessions/disconnect', (req: Request, res: Response) => {
+app.post('/api/v1/sessions/disconnect', async (req: Request, res: Response) => {
   const { sessionId, reason } = req.body;
   if (!sessionId) {
     res.status(400).json({ error: 'MISSING_SESSION_ID', message: 'sessionId is required' });
@@ -231,7 +257,22 @@ app.post('/api/v1/sessions/disconnect', (req: Request, res: Response) => {
   }
 
   const sessions = getSessionsStore();
-  const session = sessions.get(sessionId);
+  let session = sessions.get(sessionId);
+
+  // If not found in memory, look up directly in Firestore
+  if (!session) {
+    const db = getFirestoreDb();
+    if (db && process.env.NODE_ENV !== 'test') {
+      try {
+        const doc = await db.doc(`sessions/${sessionId}`).get();
+        if (doc.exists) {
+          session = doc.data() as SessionDoc;
+        }
+      } catch (err: any) {
+        console.warn('[SpokeOps API] Firestore disconnect lookup failed:', err.message);
+      }
+    }
+  }
 
   if (!session) {
     res.status(404).json({ error: 'SESSION_NOT_FOUND', message: `Session ${sessionId} not found` });
@@ -341,8 +382,8 @@ app.get('/api/v1/events', async (req: Request, res: Response) => {
 /**
  * Scheduled Reaper Webhook: POST /api/v1/reap-sessions
  */
-app.post('/api/v1/reap-sessions', (_req: Request, res: Response) => {
-  const result = reapStaleSessions();
+app.post('/api/v1/reap-sessions', async (_req: Request, res: Response) => {
+  const result = await reapStaleSessionsAsync();
   res.json({
     success: true,
     result

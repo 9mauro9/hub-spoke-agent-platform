@@ -185,6 +185,10 @@ export class SpokeOpsTelemetry {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
+
+    this.sessionId = null;
+    this.currentUser = null;
+    this.isActiveCadence = false;
   }
 
   private postPayload(data: any) {
