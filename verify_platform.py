@@ -302,8 +302,10 @@ def verify_all():
     # --------------------------------------------------------------------------
     # Generate Artifact Summary
     # --------------------------------------------------------------------------
-    print_step("Step 7: Generating AES v3 Compliance Artifact")
-    artifact_path = "/Users/maurolollo/.gemini/antigravity/brain/2b8eb05c-889b-4581-9243-f9ea47150326/aes_v3_compliance_report.md"
+    docs_dir = os.path.join(os.path.dirname(__file__), "docs")
+    os.makedirs(docs_dir, exist_ok=True)
+    artifact_path = os.path.join(docs_dir, "aes_v3_compliance_report.md")
+
     
     compliance_content = f"""# AES v3 Architectural Compliance Report
 **Platform:** `hub-spoke-agent-platform`  

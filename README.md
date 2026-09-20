@@ -169,6 +169,11 @@ hub-spoke-agent-platform/
 │   └── schemas/
 │       ├── task_request.json       # AgentTaskRequest JSON Schema contract
 │       └── task_response.json      # AgentTaskResponse JSON Schema contract
+├── docs/                           # Consolidated platform documentation
+│   ├── architecture.md             # In-depth AES v3 architectural specifications
+│   ├── gcp_runbook.md              # Production Cloud Run deployment and ops runbook
+│   ├── api_contracts.md            # REST, SSE, and FastMCP schemas & protocols
+│   └── aes_v3_compliance_report.md # Automated AES v3 compliance verification report
 ├── hub/
 │   ├── Dockerfile                  # Master Orchestrator container manifest
 │   ├── README.md                   # Hub architecture and endpoint documentation
@@ -200,3 +205,17 @@ hub-spoke-agent-platform/
 ├── cloudbuild.yaml                 # Multi-container production Cloud Build pipeline
 └── requirements.txt                # Root Python dependencies
 ```
+
+---
+
+## 8. Documentation Index
+
+All platform documentation is consolidated directly in this repository:
+- [System Architecture](docs/architecture.md) — Comprehensive AES v3 multi-agent architecture and dataflow.
+- [GCP Operations Runbook](docs/gcp_runbook.md) — Production deployment guides, Cloud Run commands, and monitoring.
+- [API Contracts & Protocols](docs/api_contracts.md) — REST, SSE, JSON-RPC FastMCP, and Pub/Sub event schemas.
+- [AES v3 Compliance Report](docs/aes_v3_compliance_report.md) — Automated compliance audit results for all AES v3 deliverables.
+- [Hub Master Orchestrator Guide](hub/README.md) — LangGraph 7-node orchestration and SSE streaming.
+- [Spoke 1 Housekeeper Guide](spokes/housekeeper/README.md) — Repository hygiene and Firestore audits.
+- [Spoke 2 Video Ingest Guide](spokes/video-ingest/README.md) — Multimodal video extraction with Gemini.
+- [Web Control Center Guide](ui/README.md) — React dashboard and Cloud Run proxy deployment.
