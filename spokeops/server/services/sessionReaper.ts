@@ -64,7 +64,9 @@ export function reapStaleSessions(): ReaperResult {
       } catch (err: any) {
         console.warn('[SpokeOps Reaper] Firestore sweep warning:', err.message);
       }
-    })().catch(() => {});
+    })().catch((err: unknown) => {
+      console.warn('[SpokeOps Reaper] Background Firestore sweep error:', err);
+    });
   }
 
   const result: ReaperResult = {

@@ -56,6 +56,7 @@ export interface InitSpokeOpsConfig {
   environment?: SpokeOpsEnvironment;
   activeHeartbeatMs?: number; // default: 120,000ms (2 minutes)
   idleHeartbeatMs?: number;   // default: 300,000ms (5 minutes)
+  debug?: boolean;
 }
 
 export type AuditAction =
@@ -358,7 +359,11 @@ class SpokeOpsClient {
         },
         body: serialized,
         keepalive: true
-      }).catch(() => {});
+      }).catch((err) => {
+        if (this.config?.debug) {
+          console.warn('[SpokeOps Telemetry] Beacon fetch fallback encountered network error:', err);
+        }
+      });
     }
   }
 

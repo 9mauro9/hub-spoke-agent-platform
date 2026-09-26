@@ -178,7 +178,9 @@ export class SpokeOpsTelemetry {
           "x-spoke-app-id": this.appId
         },
         keepalive: true
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn("[SpokeOps Telemetry] Beacon fetch fallback encountered network error:", err);
+      });
     }
 
     if (this.heartbeatTimer) {

@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "server": "tsx server/index.ts",
     "reaper": "tsx server/services/sessionReaper.ts",
-    "test:api": "tsx test/verify-platform.ts"
+    "test:api": "tsx test/verify-platform.ts",
+    "standards:check": "bash .antigravity/skills/m-dev-standards/aes-v3/scripts/validate-aes.sh --root . && bash .antigravity/skills/m-dev-standards/hub-spoke/scripts/validate-hub-spoke.sh --root .",
+    "standards:audit": "bash .antigravity/skills/m-dev-standards/aes-v3/scripts/validate-aes.sh --root . --report-only && bash .antigravity/skills/m-dev-standards/hub-spoke/scripts/validate-hub-spoke.sh --root . --report-only"
   },
   "dependencies": {
     "@google-cloud/firestore": "^9.2.0",

@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Sessions } from './pages/Sessions';
 import { AuditExplorer } from './pages/AuditExplorer';
 import { Tenants } from './pages/Tenants';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,15 +37,19 @@ export const App: React.FC = () => {
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TenantFilterProvider>
-          <Shell currentPath={currentPath} onNavigate={setCurrentPath}>
-            {renderContent()}
-          </Shell>
-        </TenantFilterProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary spokeName="SpokeOpsConsole">
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TenantFilterProvider>
+            <Shell currentPath={currentPath} onNavigate={setCurrentPath}>
+              <ErrorBoundary spokeName={`Page-${currentPath}`}>
+                {renderContent()}
+              </ErrorBoundary>
+            </Shell>
+          </TenantFilterProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 

@@ -22,7 +22,10 @@ function makeRequest(
         let parsed = rawData;
         try {
           parsed = JSON.parse(rawData);
-        } catch {}
+        } catch (parseError: any) {
+          // Payload is non-JSON or raw text; preserve rawData string
+          parsed = rawData;
+        }
         resolve({
           status: res.statusCode || 500,
           data: parsed,

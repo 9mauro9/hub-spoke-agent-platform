@@ -1,0 +1,3 @@
+[submodule ".antigravity/skills/m-dev-standards"]
+	path = .antigravity/skills/m-dev-standards
+	url = https://github.com/9mauro9/m-dev-standards.git

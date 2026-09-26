@@ -54,7 +54,9 @@ export function useHubStream(sessionId: string | null) {
           setAccumulatedTokens(st.reconciled_usage.actual_tokens);
         }
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      console.warn('[HubStream] Failed to fetch initial task state:', err);
+    });
 
     const unsubscribe = api.subscribeTaskStream(
       sessionId,
