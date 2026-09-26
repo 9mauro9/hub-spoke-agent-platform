@@ -31,3 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release of SpokeOps telemetry ingestion, RBAC observability, and session monitoring platform.
 - Multi-spoke telemetry visualization dashboard and audit explorer.
+
+[1.1.0]: https://github.com/9mauro9/hub-spoke-agent-platform/releases/tag/v1.1.0
+[1.0.0]: https://github.com/9mauro9/hub-spoke-agent-platform/releases/tag/v1.0.0
+
