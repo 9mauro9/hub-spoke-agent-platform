@@ -14,16 +14,20 @@ export const Header: React.FC = () => {
     { label: '15m', value: '15m' },
     { label: '1h', value: '1h' },
     { label: '24h', value: '24h' },
-    { label: '7d', value: '7d' }
+    { label: '7d', value: '7d' },
+    { label: '30d', value: '30d' },
+    { label: 'ALL', value: 'ALL' }
   ];
 
   return (
-    <header className="h-14 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md px-4 flex items-center justify-between gap-4 sticky top-0 z-30">
+    <header className="h-14 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md px-4 flex items-center justify-between gap-3 sticky top-0 z-30">
       {/* Left: Tenant Picker & Global Quick Search */}
-      <div className="flex items-center gap-3 flex-1 max-w-2xl">
-        <TenantPicker />
+      <div className="flex items-center gap-3 flex-1 min-w-0 max-w-lg">
+        <div className="shrink-0">
+          <TenantPicker />
+        </div>
 
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 min-w-[140px] max-w-xs sm:max-w-sm">
           <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
@@ -36,9 +40,9 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Right: Date Range, Persona Switcher & Identity */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 shrink-0">
         {/* Date Range Selector */}
-        <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
+        <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs shrink-0 whitespace-nowrap">
           <div className="px-2 py-1 text-slate-400 flex items-center gap-1 border-r border-slate-800/80">
             <Calendar className="w-3 h-3 text-slate-400" />
             <span className="text-[10px] font-semibold uppercase tracking-wider">Range</span>

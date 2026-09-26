@@ -16,11 +16,24 @@ import {
 
 export const Sessions: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<SessionStatus | 'all'>('all');
-  const { sessions, activeCount, idleCount, timedOutCount, isLoading, disconnectSession } = useSessions({
+  const {
+    sessions,
+    activeCount,
+    idleCount,
+    timedOutCount,
+    isLoading,
+    isFetching,
+    disconnectSession,
+    loadMore,
+    hasMore,
+    isFetchingNextPage,
+    isOlderHistoricalEmpty,
+    indexErrorUrl
+  } = useSessions({
     statusFilter
   });
   const { isOpsAdmin, persona } = useAuth();
-  const { selectedTenantMeta } = useTenantFilter();
+  const { selectedTenantMeta, setDateRange, dateRange } = useTenantFilter();
   const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   const statusTabs: { label: string; value: SessionStatus | 'all'; count?: number }[] = [
@@ -211,8 +224,31 @@ export const Sessions: React.FC = () => {
       <SessionGrid
         sessions={sessions}
         isLoading={isLoading}
+        isColdQueryLoading={isFetching && !isLoading}
+        isOlderHistoricalEmpty={isOlderHistoricalEmpty}
+        indexErrorUrl={indexErrorUrl}
+        onResetRange={() => setDateRange('7d')}
         onDisconnect={disconnectSession}
       />
+
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={loadMore}
+            disabled={isFetchingNextPage}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <span className="w-3 h-3 rounded-full border-2 border-brand-400 border-t-transparent animate-spin mr-1" />
+                <span>Loading older sessions...</span>
+              </>
+            ) : (
+              <span>Load More (Next Cursor Page)</span>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

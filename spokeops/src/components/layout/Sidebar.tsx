@@ -62,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-base tracking-tight text-white">SpokeOps</span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-brand-950 text-brand-400 border border-brand-800/80">
-                AES v3
+                Hub-Spoke
               </span>
             </div>
             <p className="text-[11px] text-slate-400 tracking-tight">Telemetry & RBAC Platform</p>

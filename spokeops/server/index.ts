@@ -35,7 +35,7 @@ app.get('/api/v1/health', (_req: Request, res: Response) => {
     status: 'ok',
     service: 'spokeops-ingestion',
     version: '1.0.0',
-    standard: 'AES v3',
+    standard: 'Hub-Spoke',
     timestamp: new Date().toISOString()
   });
 });
@@ -158,13 +158,28 @@ app.get('/api/v1/tenants', (_req: Request, res: Response) => {
   res.json({ tenants });
 });
 
+function getRangeTimeLimitMs(range?: string): number | null {
+  if (!range || range === 'ALL') return null;
+  switch (range) {
+    case '15m': return 15 * 60 * 1000;
+    case '1h': return 60 * 60 * 1000;
+    case '24h': return 24 * 60 * 60 * 1000;
+    case '7d': return 7 * 24 * 60 * 60 * 1000;
+    case '30d': return 30 * 24 * 60 * 60 * 1000;
+    default: return null;
+  }
+}
+
 /**
  * Sessions Query: GET /api/v1/sessions
  */
 app.get('/api/v1/sessions', async (req: Request, res: Response) => {
-  const { appId, status, search, limit } = req.query;
+  const { appId, status, search, limit, range, cursor } = req.query;
   const db = getFirestoreDb();
   let list: SessionDoc[] = [];
+  let indexUrl: string | null = null;
+
+  const timeLimitMs = getRangeTimeLimitMs(range as string);
 
   if (db && process.env.NODE_ENV !== 'test') {
     try {
@@ -172,12 +187,35 @@ app.get('/api/v1/sessions', async (req: Request, res: Response) => {
       if (appId && appId !== 'all') {
         query = query.where('appId', '==', appId);
       }
-      const snapshot = await query.limit(200).get();
+      if (status && status !== 'all') {
+        query = query.where('status', '==', status);
+      }
+      if (timeLimitMs !== null) {
+        const lowerBoundIso = new Date(Date.now() - timeLimitMs).toISOString();
+        query = query.where('lastHeartbeat', '>=', lowerBoundIso);
+      }
+
+      // Strictly apply orderBy lastHeartbeat desc
+      query = query.orderBy('lastHeartbeat', 'desc');
+
+      if (cursor && typeof cursor === 'string') {
+        query = query.startAfter(cursor);
+      }
+
+      const batchLimit = Math.min(Math.max(parseInt(limit as string, 10) || 50, 1), 100);
+      const snapshot = await query.limit(batchLimit + 1).get();
       snapshot.forEach((doc: any) => {
         list.push(doc.data() as SessionDoc);
       });
     } catch (err: any) {
-      console.warn('[SpokeOps API] Firestore sessions query error:', err.message);
+      if (err.message && (err.message.includes('requires an index') || err.message.includes('FAILED_PRECONDITION'))) {
+        const urlMatch = err.message.match(/https:\/\/console\.firebase\.google\.com[^\s\)]+/);
+        indexUrl = urlMatch ? urlMatch[0] : null;
+        console.error('[SpokeOps API] Missing Firestore composite index for sessions query!');
+        if (indexUrl) console.error(`  --> Create index here: ${indexUrl}`);
+      } else {
+        console.warn('[SpokeOps API] Firestore sessions query error:', err.message);
+      }
     }
   }
 
@@ -224,6 +262,16 @@ app.get('/api/v1/sessions', async (req: Request, res: Response) => {
     list = list.filter((s) => s.status === status);
   }
 
+  // Filter by date range lower bound (for 30d, 7d, etc., or none for ALL)
+  if (timeLimitMs !== null) {
+    const lowerBoundMs = Date.now() - timeLimitMs;
+    list = list.filter((s) => {
+      const hb = new Date(s.lastHeartbeat).getTime();
+      const st = new Date(s.startedAt).getTime();
+      return hb >= lowerBoundMs || st >= lowerBoundMs;
+    });
+  }
+
   // Filter by search query (email, userId, sessionId)
   if (search && typeof search === 'string') {
     const q = search.toLowerCase();
@@ -235,14 +283,38 @@ app.get('/api/v1/sessions', async (req: Request, res: Response) => {
     );
   }
 
-  // Sort by lastHeartbeat desc
+  // Strictly sort by lastHeartbeat desc
   list.sort((a, b) => new Date(b.lastHeartbeat).getTime() - new Date(a.lastHeartbeat).getTime());
 
-  if (limit) {
-    list = list.slice(0, parseInt(limit as string, 10));
+  // In-memory cursor pagination
+  let startIndex = 0;
+  if (cursor && typeof cursor === 'string') {
+    const foundIdx = list.findIndex((s) => s.sessionId === cursor || s.lastHeartbeat === cursor);
+    if (foundIdx !== -1) {
+      startIndex = foundIdx + 1;
+    } else {
+      const cursorTime = new Date(cursor).getTime();
+      if (!isNaN(cursorTime)) {
+        const timeIdx = list.findIndex((s) => new Date(s.lastHeartbeat).getTime() < cursorTime);
+        if (timeIdx !== -1) startIndex = timeIdx;
+      }
+    }
   }
 
-  res.json({ sessions: list, total: list.length });
+  const batchLimit = Math.min(Math.max(parseInt(limit as string, 10) || 50, 1), 100);
+  const sliced = list.slice(startIndex, startIndex + batchLimit + 1);
+  const hasMore = sliced.length > batchLimit;
+  const items = hasMore ? sliced.slice(0, batchLimit) : sliced;
+  const nextCursor = hasMore && items.length > 0 ? items[items.length - 1].lastHeartbeat : null;
+
+  res.json({
+    sessions: items,
+    nextCursor,
+    total: list.length,
+    hasMore,
+    range: range || '24h',
+    indexUrl
+  });
 });
 
 /**
@@ -315,9 +387,12 @@ app.post('/api/v1/sessions/disconnect', async (req: Request, res: Response) => {
  * Audit Events Query: GET /api/v1/events
  */
 app.get('/api/v1/events', async (req: Request, res: Response) => {
-  const { appId, status, action, search, limit } = req.query;
+  const { appId, status, action, search, limit, range, cursor } = req.query;
   const db = getFirestoreDb();
   let list: AuditEventDoc[] = [];
+  let indexUrl: string | null = null;
+
+  const timeLimitMs = getRangeTimeLimitMs(range as string);
 
   if (db && process.env.NODE_ENV !== 'test') {
     try {
@@ -331,12 +406,32 @@ app.get('/api/v1/events', async (req: Request, res: Response) => {
       if (action && action !== 'all') {
         query = query.where('action', '==', action);
       }
-      const snapshot = await query.limit(200).get();
+      if (timeLimitMs !== null) {
+        const lowerBoundIso = new Date(Date.now() - timeLimitMs).toISOString();
+        query = query.where('timestamp', '>=', lowerBoundIso);
+      }
+
+      // Strictly apply orderBy timestamp desc
+      query = query.orderBy('timestamp', 'desc');
+
+      if (cursor && typeof cursor === 'string') {
+        query = query.startAfter(cursor);
+      }
+
+      const batchLimit = Math.min(Math.max(parseInt(limit as string, 10) || 50, 1), 100);
+      const snapshot = await query.limit(batchLimit + 1).get();
       snapshot.forEach((doc: any) => {
         list.push(doc.data() as AuditEventDoc);
       });
     } catch (err: any) {
-      console.warn('[SpokeOps API] Firestore events query error:', err.message);
+      if (err.message && (err.message.includes('requires an index') || err.message.includes('FAILED_PRECONDITION'))) {
+        const urlMatch = err.message.match(/https:\/\/console\.firebase\.google\.com[^\s\)]+/);
+        indexUrl = urlMatch ? urlMatch[0] : null;
+        console.error('[SpokeOps API] Missing Firestore composite index for events query!');
+        if (indexUrl) console.error(`  --> Create index here: ${indexUrl}`);
+      } else {
+        console.warn('[SpokeOps API] Firestore events query error:', err.message);
+      }
     }
   }
 
@@ -357,6 +452,12 @@ app.get('/api/v1/events', async (req: Request, res: Response) => {
     }
   }
 
+  // Filter by date range lower bound (e.g. 30d, 7d, or unbounded for ALL)
+  if (timeLimitMs !== null) {
+    const lowerBoundMs = Date.now() - timeLimitMs;
+    list = list.filter((e) => new Date(e.timestamp).getTime() >= lowerBoundMs);
+  }
+
   if (search && typeof search === 'string') {
     const q = search.toLowerCase();
     list = list.filter(
@@ -369,14 +470,38 @@ app.get('/api/v1/events', async (req: Request, res: Response) => {
     );
   }
 
-  // Sort newest first
+  // Strictly order by timestamp desc
   list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  if (limit) {
-    list = list.slice(0, parseInt(limit as string, 10));
+  // In-memory cursor pagination
+  let startIndex = 0;
+  if (cursor && typeof cursor === 'string') {
+    const foundIdx = list.findIndex((e) => e.eventId === cursor || e.timestamp === cursor);
+    if (foundIdx !== -1) {
+      startIndex = foundIdx + 1;
+    } else {
+      const cursorTime = new Date(cursor).getTime();
+      if (!isNaN(cursorTime)) {
+        const timeIdx = list.findIndex((e) => new Date(e.timestamp).getTime() < cursorTime);
+        if (timeIdx !== -1) startIndex = timeIdx;
+      }
+    }
   }
 
-  res.json({ events: list, total: list.length });
+  const batchLimit = Math.min(Math.max(parseInt(limit as string, 10) || 50, 1), 100);
+  const sliced = list.slice(startIndex, startIndex + batchLimit + 1);
+  const hasMore = sliced.length > batchLimit;
+  const items = hasMore ? sliced.slice(0, batchLimit) : sliced;
+  const nextCursor = hasMore && items.length > 0 ? items[items.length - 1].timestamp : null;
+
+  res.json({
+    events: items,
+    nextCursor,
+    total: list.length,
+    hasMore,
+    range: range || 'ALL',
+    indexUrl
+  });
 });
 
 /**

@@ -1,74 +1,70 @@
 /**
- * Live API Data Service Layer for SpokeOps Operations Console (AES v3 Standard)
- * Communicates with Central Ingestion API (/api/v1) via Firebase Hosting rewrites or direct API base URL.
+ * Central Telemetry Service Layer for SpokeOps Operations Console
+ * Communicates with Central Ingestion API (/api/v1) with cursor-based pagination and range support.
  */
-import { TenantRegistryDoc, SessionDoc, AuditEventDoc } from '../types/telemetry';
+import {
+  TenantRegistryDoc,
+  SessionDoc,
+  AuditEventDoc,
+  TelemetryQueryParams,
+  PaginatedTelemetryResponse
+} from '../types/telemetry';
+import { telemetryService as coreTelemetryService } from './telemetry';
+import { auditService as coreAuditService } from './audit';
+
+export type PaginatedArray<T> = T[] & {
+  nextCursor?: string | null;
+  total?: number;
+  hasMore?: boolean;
+  indexUrl?: string | null;
+};
 
 export interface TelemetryService {
   getTenants(): Promise<TenantRegistryDoc[]>;
-  getSessions(appId?: string): Promise<SessionDoc[]>;
-  getAuditEvents(appId?: string): Promise<AuditEventDoc[]>;
+  getSessions(options?: string | TelemetryQueryParams): Promise<PaginatedArray<SessionDoc>>;
+  querySessions(options: TelemetryQueryParams): Promise<PaginatedTelemetryResponse<SessionDoc>>;
+  getAuditEvents(options?: string | TelemetryQueryParams): Promise<PaginatedArray<AuditEventDoc>>;
+  queryAuditEvents(options: TelemetryQueryParams): Promise<PaginatedTelemetryResponse<AuditEventDoc>>;
   disconnectSession(sessionId: string): Promise<boolean>;
 }
 
-class LiveApiTelemetryService implements TelemetryService {
-  private baseUrl: string;
-
-  constructor() {
-    this.baseUrl = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) || '';
-  }
-
+class TelemetryServiceBridge implements TelemetryService {
   async getTenants(): Promise<TenantRegistryDoc[]> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/v1/tenants`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      return data.tenants || [];
-    } catch (err) {
-      console.error('[SpokeOps Service] Error fetching tenants:', err);
-      return [];
-    }
+    return coreTelemetryService.getTenants();
   }
 
-  async getSessions(appId?: string): Promise<SessionDoc[]> {
-    try {
-      const queryParam = appId && appId !== 'all' ? `?appId=${encodeURIComponent(appId)}` : '';
-      const res = await fetch(`${this.baseUrl}/api/v1/sessions${queryParam}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      return data.sessions || [];
-    } catch (err) {
-      console.error('[SpokeOps Service] Error fetching sessions:', err);
-      return [];
-    }
+  async getSessions(options?: string | TelemetryQueryParams): Promise<PaginatedArray<SessionDoc>> {
+    const res = await coreTelemetryService.getSessions(options);
+    const arr = [...res.data] as PaginatedArray<SessionDoc>;
+    arr.nextCursor = res.nextCursor;
+    arr.total = res.total;
+    arr.hasMore = res.hasMore;
+    arr.indexUrl = res.indexUrl;
+    return arr;
   }
 
-  async getAuditEvents(appId?: string): Promise<AuditEventDoc[]> {
-    try {
-      const queryParam = appId && appId !== 'all' ? `?appId=${encodeURIComponent(appId)}` : '';
-      const res = await fetch(`${this.baseUrl}/api/v1/events${queryParam}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      return data.events || [];
-    } catch (err) {
-      console.error('[SpokeOps Service] Error fetching audit events:', err);
-      return [];
-    }
+  async querySessions(options: TelemetryQueryParams): Promise<PaginatedTelemetryResponse<SessionDoc>> {
+    return coreTelemetryService.getSessions(options);
+  }
+
+  async getAuditEvents(options?: string | TelemetryQueryParams): Promise<PaginatedArray<AuditEventDoc>> {
+    const res = await coreAuditService.getAuditEvents(options);
+    const arr = [...res.data] as PaginatedArray<AuditEventDoc>;
+    arr.nextCursor = res.nextCursor;
+    arr.total = res.total;
+    arr.hasMore = res.hasMore;
+    arr.indexUrl = res.indexUrl;
+    return arr;
+  }
+
+  async queryAuditEvents(options: TelemetryQueryParams): Promise<PaginatedTelemetryResponse<AuditEventDoc>> {
+    return coreAuditService.getAuditEvents(options);
   }
 
   async disconnectSession(sessionId: string): Promise<boolean> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/v1/sessions/disconnect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, reason: 'Administrative eviction by Ops Admin' })
-      });
-      return res.ok;
-    } catch (err) {
-      console.error('[SpokeOps Service] Error evicting session:', err);
-      return false;
-    }
+    return coreTelemetryService.disconnectSession(sessionId);
   }
 }
 
-export const telemetryService: TelemetryService = new LiveApiTelemetryService();
+export const telemetryService: TelemetryService = new TelemetryServiceBridge();
+export { coreTelemetryService, coreAuditService };

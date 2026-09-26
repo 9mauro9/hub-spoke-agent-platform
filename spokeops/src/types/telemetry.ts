@@ -66,4 +66,23 @@ export interface AuditEventDoc {
   timestamp: string;
 }
 
-export type DateRangeOption = '15m' | '1h' | '24h' | '7d' | 'custom';
+export type DateRangeOption = '15m' | '1h' | '24h' | '7d' | '30d' | 'ALL';
+
+export interface TelemetryQueryParams {
+  appId?: string;
+  range?: DateRangeOption;
+  cursor?: string | null;
+  limit?: number;
+  status?: string;
+  action?: string;
+  search?: string;
+}
+
+export interface PaginatedTelemetryResponse<T> {
+  data: T[];
+  nextCursor: string | null;
+  total: number;
+  hasMore: boolean;
+  range?: DateRangeOption;
+  indexUrl?: string | null;
+}

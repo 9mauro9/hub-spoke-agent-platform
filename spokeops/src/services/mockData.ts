@@ -362,6 +362,54 @@ export const INITIAL_MOCK_EVENTS: AuditEventDoc[] = [
       role: 'admin'
     },
     timestamp: new Date(now - 2 * 60 * 1000).toISOString()
+  },
+  {
+    eventId: 'evt_hist_14d',
+    appId: 'academy-library',
+    sessionId: 'sess_acadlib_old_01',
+    userId: 'usr_sarah_44',
+    userEmail: 'sarah.connor@academy.edu',
+    roleAtExecution: 'curriculum_lead',
+    action: 'resource_create',
+    resourceType: 'curriculum_unit',
+    resourceId: 'unit_optics_101',
+    status: 'success',
+    metadata: {
+      note: 'Created unit 14 days ago (in 30d range, outside 7d)'
+    },
+    timestamp: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    eventId: 'evt_hist_25d',
+    appId: 'avventiq',
+    sessionId: 'sess_avventiq_old_02',
+    userId: 'usr_alex_09',
+    userEmail: 'alex.chen@avventiq.com',
+    roleAtExecution: 'enterprise_admin',
+    action: 'policy_update',
+    resourceType: 'tenant_policy',
+    resourceId: 'session_timeout_seconds',
+    status: 'warning',
+    metadata: {
+      note: 'Updated policy 25 days ago (in 30d range)'
+    },
+    timestamp: new Date(now - 25 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    eventId: 'evt_hist_45d',
+    appId: 'academy-library',
+    sessionId: 'sess_acadlib_old_03',
+    userId: 'usr_sarah_44',
+    userEmail: 'sarah.connor@academy.edu',
+    roleAtExecution: 'curriculum_lead',
+    action: 'resource_delete',
+    resourceType: 'legacy_module',
+    resourceId: 'mod_ancient_syllabus',
+    status: 'success',
+    metadata: {
+      note: 'Archived 45 days ago (only in ALL range)'
+    },
+    timestamp: new Date(now - 45 * 24 * 60 * 60 * 1000).toISOString()
   }
 ];
 

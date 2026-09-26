@@ -15,8 +15,10 @@ export interface DataTableProps<T> {
   columns: Column<T>[];
   keyExtractor: (item: T) => string;
   isLoading?: boolean;
+  isColdQueryLoading?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
+  emptyAction?: React.ReactNode;
   onRowClick?: (item: T) => void;
   className?: string;
 }
@@ -26,8 +28,10 @@ export function DataTable<T>({
   columns,
   keyExtractor,
   isLoading = false,
+  isColdQueryLoading = false,
   emptyTitle = 'No records found',
   emptyDescription = 'There is no telemetry data available for the selected filters.',
+  emptyAction,
   onRowClick,
   className
 }: DataTableProps<T>) {
@@ -59,12 +63,18 @@ export function DataTable<T>({
         </div>
         <h3 className="text-sm font-semibold text-slate-300">{emptyTitle}</h3>
         <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">{emptyDescription}</p>
+        {emptyAction && <div className="mt-4 flex justify-center">{emptyAction}</div>}
       </div>
     );
   }
 
   return (
     <div className={clsx('w-full border border-slate-800/90 rounded-lg overflow-hidden bg-slate-900/60 backdrop-blur-sm', className)}>
+      {isColdQueryLoading && (
+        <div className="h-0.5 w-full bg-brand-950 overflow-hidden">
+          <div className="h-full bg-brand-500 animate-pulse w-full" />
+        </div>
+      )}
       <div className="overflow-x-auto max-h-[680px] overflow-y-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead className="bg-slate-900/95 sticky top-0 z-10 border-b border-slate-800 shadow-sm backdrop-blur">

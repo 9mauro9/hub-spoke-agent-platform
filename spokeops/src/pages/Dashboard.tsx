@@ -21,9 +21,27 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const { sessions, activeCount, idleCount, timedOutCount, isLoading: loadingSessions, disconnectSession } = useSessions();
-  const { events, deniedCount, warningCount, isLoading: loadingEvents } = useAuditLogs();
-  const { tenants, selectedTenantMeta } = useTenantFilter();
+  const {
+    sessions,
+    activeCount,
+    idleCount,
+    timedOutCount,
+    isLoading: loadingSessions,
+    isFetching: fetchingSessions,
+    isOlderHistoricalEmpty: olderSessionsEmpty,
+    indexErrorUrl: sessionsIndexError,
+    disconnectSession
+  } = useSessions();
+  const {
+    events,
+    deniedCount,
+    warningCount,
+    isLoading: loadingEvents,
+    isFetching: fetchingEvents,
+    isOlderHistoricalEmpty: olderEventsEmpty,
+    indexErrorUrl: eventsIndexError
+  } = useAuditLogs();
+  const { tenants, selectedTenantMeta, setDateRange } = useTenantFilter();
 
   const recentSessions = sessions.slice(0, 4);
   const recentEvents = events.slice(0, 4);
@@ -223,6 +241,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <SessionGrid
           sessions={recentSessions}
           isLoading={loadingSessions}
+          isColdQueryLoading={fetchingSessions && !loadingSessions}
+          isOlderHistoricalEmpty={olderSessionsEmpty}
+          indexErrorUrl={sessionsIndexError}
+          onResetRange={() => setDateRange('7d')}
           onDisconnect={disconnectSession}
         />
       </div>
@@ -246,7 +268,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </button>
         </div>
 
-        <AuditTable events={recentEvents} isLoading={loadingEvents} />
+        <AuditTable
+          events={recentEvents}
+          isLoading={loadingEvents}
+          isColdQueryLoading={fetchingEvents && !loadingEvents}
+          isOlderHistoricalEmpty={olderEventsEmpty}
+          indexErrorUrl={eventsIndexError}
+          onResetRange={() => setDateRange('7d')}
+        />
       </div>
     </div>
   );

@@ -45,7 +45,7 @@ function makeRequest(
 
 async function runVerification() {
   console.log('\n======================================================');
-  console.log('🚀 SPOKEOPS PLATFORM VERIFICATION (AES v3 Standard)');
+  console.log('🚀 SPOKEOPS PLATFORM VERIFICATION (Hub-Spoke Standard)');
   console.log('======================================================\n');
 
   let passedTests = 0;
@@ -511,6 +511,166 @@ async function runVerification() {
       assert.ok(deniedEvent);
       assert.strictEqual(deniedEvent.status, 'denied');
       assert.strictEqual(deniedEvent.metadata.requiredRole, 'operator');
+    });
+
+    // ---------------------------------------------------------------
+    // 7. Telemetry Range Controls (30d, ALL) & Cursor Pagination
+    // ---------------------------------------------------------------
+    console.log('\n--- 7. TELEMETRY RANGE CONTROLS (30d, ALL) & CURSOR PAGINATION ---');
+
+    const rangeTenant = 'academy-timeliner';
+    const nowTime = Date.now();
+    const eventRecentId = `evt_range_rec_${nowTime}`;
+    const event15dId = `evt_range_15d_${nowTime}`;
+    const event45dId = `evt_range_45d_${nowTime}`;
+
+    // Seed events into eventsStore for range verification
+    const eventsStore = getEventsStore();
+    eventsStore.push({
+      eventId: eventRecentId,
+      appId: rangeTenant,
+      sessionId: 'sess_range_01',
+      userId: 'usr_range_tester',
+      userEmail: 'tester@academy.edu',
+      roleAtExecution: 'scheduler',
+      action: 'resource_update',
+      resourceType: 'schedule',
+      resourceId: 'sch_recent',
+      status: 'success',
+      metadata: { rangeTest: true },
+      timestamp: new Date(nowTime - 10 * 60 * 1000).toISOString() // 10 min ago
+    });
+
+    eventsStore.push({
+      eventId: event15dId,
+      appId: rangeTenant,
+      sessionId: 'sess_range_02',
+      userId: 'usr_range_tester',
+      userEmail: 'tester@academy.edu',
+      roleAtExecution: 'scheduler',
+      action: 'resource_update',
+      resourceType: 'schedule',
+      resourceId: 'sch_15d',
+      status: 'warning',
+      metadata: { rangeTest: true },
+      timestamp: new Date(nowTime - 15 * 24 * 60 * 60 * 1000).toISOString() // 15 days ago
+    });
+
+    eventsStore.push({
+      eventId: event45dId,
+      appId: rangeTenant,
+      sessionId: 'sess_range_03',
+      userId: 'usr_range_tester',
+      userEmail: 'tester@academy.edu',
+      roleAtExecution: 'scheduler',
+      action: 'resource_delete',
+      resourceType: 'schedule',
+      resourceId: 'sch_45d',
+      status: 'denied',
+      metadata: { rangeTest: true },
+      timestamp: new Date(nowTime - 45 * 24 * 60 * 60 * 1000).toISOString() // 45 days ago
+    });
+
+    await test('Filters events strictly within 7d range', async () => {
+      const res = await makeRequest({
+        hostname: '127.0.0.1',
+        port,
+        path: `/api/v1/events?appId=${rangeTenant}&range=7d`,
+        method: 'GET'
+      });
+
+      assert.strictEqual(res.status, 200);
+      const ids = res.data.events.map((e: any) => e.eventId);
+      assert.strictEqual(ids.includes(eventRecentId), true);
+      assert.strictEqual(ids.includes(event15dId), false, '15d event should not be in 7d range');
+      assert.strictEqual(ids.includes(event45dId), false, '45d event should not be in 7d range');
+    });
+
+    await test('Filters events with 30d lower bound relative to Date.now()', async () => {
+      const res = await makeRequest({
+        hostname: '127.0.0.1',
+        port,
+        path: `/api/v1/events?appId=${rangeTenant}&range=30d`,
+        method: 'GET'
+      });
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.data.range, '30d');
+      const ids = res.data.events.map((e: any) => e.eventId);
+      assert.strictEqual(ids.includes(eventRecentId), true, 'Recent event must be in 30d range');
+      assert.strictEqual(ids.includes(event15dId), true, '15d event must be in 30d range');
+      assert.strictEqual(ids.includes(event45dId), false, '45d event must NOT be in 30d range');
+    });
+
+    await test('Unbounded ALL range removes lower timestamp constraint and strictly applies orderBy timestamp desc', async () => {
+      const res = await makeRequest({
+        hostname: '127.0.0.1',
+        port,
+        path: `/api/v1/events?appId=${rangeTenant}&range=ALL`,
+        method: 'GET'
+      });
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.data.range, 'ALL');
+      const ids = res.data.events.map((e: any) => e.eventId);
+      assert.strictEqual(ids.includes(eventRecentId), true);
+      assert.strictEqual(ids.includes(event15dId), true);
+      assert.strictEqual(ids.includes(event45dId), true, '45d event must be included in ALL');
+
+      // Verify descending order
+      for (let i = 0; i < res.data.events.length - 1; i++) {
+        const cur = new Date(res.data.events[i].timestamp).getTime();
+        const next = new Date(res.data.events[i + 1].timestamp).getTime();
+        assert.ok(cur >= next, 'Events must be ordered by timestamp desc');
+      }
+    });
+
+    await test('Emits valid cursor-paginated responses with batch limit, nextCursor, and hasMore', async () => {
+      // Page 1: limit=1
+      const resPage1 = await makeRequest({
+        hostname: '127.0.0.1',
+        port,
+        path: `/api/v1/events?appId=${rangeTenant}&range=ALL&limit=1`,
+        method: 'GET'
+      });
+
+      assert.strictEqual(resPage1.status, 200);
+      assert.strictEqual(resPage1.data.events.length, 1);
+      assert.strictEqual(resPage1.data.hasMore, true);
+      assert.ok(resPage1.data.nextCursor, 'nextCursor must be populated when hasMore is true');
+
+      const firstItem = resPage1.data.events[0];
+      const cursor1 = resPage1.data.nextCursor;
+
+      // Page 2: with cursor
+      const resPage2 = await makeRequest({
+        hostname: '127.0.0.1',
+        port,
+        path: `/api/v1/events?appId=${rangeTenant}&range=ALL&limit=1&cursor=${encodeURIComponent(cursor1)}`,
+        method: 'GET'
+      });
+
+      assert.strictEqual(resPage2.status, 200);
+      assert.strictEqual(resPage2.data.events.length, 1);
+      const secondItem = resPage2.data.events[0];
+      assert.notStrictEqual(firstItem.eventId, secondItem.eventId, 'Page 2 item must differ from Page 1 item');
+    });
+
+    await test('Accurately identifies spokes with zero transactions older than 7 days', async () => {
+      // Tenant 'academy-insight' has no events seeded older than 7 days
+      const res = await makeRequest({
+        hostname: '127.0.0.1',
+        port,
+        path: '/api/v1/events?appId=academy-insight&range=30d',
+        method: 'GET'
+      });
+
+      assert.strictEqual(res.status, 200);
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const olderRecords = res.data.events.filter(
+        (e: any) => new Date(e.timestamp).getTime() < sevenDaysAgo
+      );
+      assert.strictEqual(olderRecords.length, 0, 'Spoke should have zero transactions older than 7 days');
     });
 
     console.log('\n======================================================');
