@@ -1,7 +1,7 @@
 # SpokeOps
 
-[![Platform Standard](https://img.shields.io/badge/Standard-AES%20v3-blue.svg)](specs/agent-architecture/README.md)
-[![Mauro Dev Standards](https://img.shields.io/badge/m--dev--standards-v1.0.1-orange.svg)](docs/standards_baseline/DEFICIENCY_REPORT.md)
+[![Platform Standard](https://img.shields.io/badge/Standard-Hub--Spoke-blue.svg)](docs/architecture.md)
+[![Mauro Dev Standards](https://img.shields.io/badge/m--dev--standards-v1.2.0-orange.svg)](docs/standards_baseline/DEFICIENCY_REPORT.md)
 [![Standards Compliance](https://img.shields.io/badge/Compliance-100%25%20Verified-brightgreen.svg)](docs/standards_baseline/DEFICIENCY_REPORT.md)
 [![Target GCP Project](https://img.shields.io/badge/GCP%20Project-spokeops--509217-blueviolet.svg)](https://console.cloud.google.com/home/dashboard?project=spokeops-509217)
 [![Firebase Console](https://img.shields.io/badge/Firebase-spokeops--509217-orange.svg)](https://console.firebase.google.com/project/spokeops-509217/overview)
@@ -9,7 +9,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue.svg)](package.json)
 [![React](https://img.shields.io/badge/React-18.2-cyan.svg)](package.json)
 
-Universal telemetry ingestion, RBAC observability, and session monitoring platform across all software initiatives (including the Academy Apps family, Hub-Spoke Agent Platform, and Avventiq) governed by **Application Engineering Standard (AES) Version 3** and **Mauro Development Standards (`m-dev-standards`)**.
+Universal telemetry ingestion, RBAC observability, and session monitoring platform across all software initiatives (including the Academy Apps family, Hub-Spoke Agent Platform, and Avventiq) governed by **Mauro Development Standards (`m-dev-standards`)** and Hub-Spoke Architecture.
 
 ### Live Production Deployments
 - **SpokeOps Web Operations Console:** [https://spokeops-509217.web.app](https://spokeops-509217.web.app)
@@ -88,8 +88,15 @@ flowchart TD
      - Scheduled and on-demand sweep (`POST /api/v1/reap-sessions` or `npm run reaper`) batch-updating stale documents directly in Cloud Firestore.
 3. **SpokeOps Web Console:**
    - **Dynamic Tenant Switcher:** Filter by All Applications, Academy Library, Academy Timeliner, Academy Builder, Academy Insight, Academy Toolkit, Avventiq, or Hub-Spoke Agent Platform (`hub-spoke-agent-platform`).
+   - **Extended Telemetry Range Controls & Cursor Pagination:**
+     - Time range selection: `15m`, `1h`, `24h`, `7d`, `30d`, and `ALL`.
+     - Strict relative lower bound calculations (`Date.now() - 30d`) and unbounded `ALL` range queries.
+     - Cursor-based pagination with batch limit enforcement preventing unbounded document reads.
+     - Non-blocking skeleton shimmer progress loaders during cold-query fetches.
+     - Fallback empty states for spokes with zero transactions older than 7 days.
    - **User Presence & Session Monitor:** Tabular view, pulsing status indicators, real-time `Xh Ym Zs` counters, client environment breakdown.
    - **Audit Explorer:** Chronological feed with color-coded severity (`SUCCESS`, `WARNING`, `DENIED`), and a slide-out Contextual JSON Drawer preserving table scroll position.
+   - **Composite Index Guardrails:** Automatic detection and console logging of missing Firestore composite indexes with direct Google Cloud Console creation links.
    - **Help Desk Persona & Masking Engine:**
      - **Help Desk Viewer:** IP addresses automatically masked (`192.168.***.***`), eviction disabled, export blocked.
      - **Ops Admin:** Unmasked IP view, manual session eviction triggers with Cloud Firestore fallback, full JSON/CSV export.
@@ -100,6 +107,7 @@ flowchart TD
 
 ```
 spokeops/
+├── firestore.indexes.json         # Firestore composite index definitions
 ├── server/                        # Central Ingestion API (Cloud Run / Express)
 │   ├── index.ts                   # Express server & telemetry endpoints
 │   ├── store.ts                   # In-memory storage & multi-tenant mock seeds
@@ -118,20 +126,23 @@ spokeops/
 │   │   └── audit/                 # AuditTable, SeverityBadge, JsonInspectorDrawer
 │   ├── context/
 │   │   ├── AuthContext.tsx        # Firebase Auth & persona claim masking engine
-│   │   └── TenantFilterContext.tsx # Global selected tenant and date range state
+│   │   └── TenantFilterContext.tsx # Central Hub range & tenant state
 │   ├── hooks/
-│   │   ├── useSessions.ts         # Query hook for active session polling & eviction
-│   │   └── useAuditLogs.ts        # Query hook for chronological audit events
+│   │   ├── useSessions.ts         # Query hook for active session polling & cursor pagination
+│   │   └── useAuditLogs.ts        # Query hook for chronological audit events & cursor pagination
 │   ├── services/
-│   │   ├── firebase.ts            # Client Firestore & Auth initialization
+│   │   ├── audit/                 # Audit log query services
+│   │   ├── telemetry/             # Session & presence query services
+│   │   ├── firebase.ts            # Client Firestore & service bridge
 │   │   └── mockData.ts            # Realistic multi-tenant seed data store
+│   ├── store/                     # Range calculation & 7-day threshold utilities
 │   └── pages/
 │       ├── Dashboard.tsx          # Overview KPI cards & active count
 │       ├── Sessions.tsx           # Live presence dashboard & eviction
 │       ├── AuditExplorer.tsx      # Comprehensive audit log screen & JSON drawer
 │       └── Tenants.tsx            # Tenant registry configuration
 ├── test/
-│   └── verify-platform.ts         # Automated AES v3 verification test suite
+│   └── verify-platform.ts         # Automated Hub-Spoke verification test suite
 ├── firestore.rules                # Least-privilege rules for SpokeOps
 ├── firebase.json                  # Hosting and function routing definitions
 └── package.json

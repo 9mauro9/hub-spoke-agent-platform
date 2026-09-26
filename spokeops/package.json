@@ -1,8 +1,8 @@
 {
   "name": "spokeops",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Universal telemetry ingestion, RBAC observability, and session monitoring platform adhering to AES v3",
+  "description": "Universal telemetry ingestion, RBAC observability, and session monitoring platform adhering to m-dev-standards",
   "type": "module",
   "scripts": {
     "dev": "vite",
