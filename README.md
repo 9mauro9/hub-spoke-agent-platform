@@ -1,6 +1,8 @@
 # Hub-and-Spoke Agent Platform (AES v3 Standard)
 
 [![Platform Standard](https://img.shields.io/badge/Standard-AES%20v3-blue.svg)](specs/agent-architecture/README.md)
+[![Mauro Dev Standards](https://img.shields.io/badge/m--dev--standards-v1.0.1-orange.svg)](docs/standards_baseline/DEFICIENCY_REPORT.md)
+[![Standards Compliance](https://img.shields.io/badge/Compliance-100%25%20Verified-brightgreen.svg)](docs/standards_baseline/DEFICIENCY_REPORT.md)
 [![Environment](https://img.shields.io/badge/Environment-Production-brightgreen.svg)](config/gcp_config.yaml)
 [![GCP Project](https://img.shields.io/badge/GCP%20Project-hub--spoke--agent--platform-blueviolet.svg)](https://console.cloud.google.com/home/dashboard?project=hub-spoke-agent-platform)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)]()
@@ -176,6 +178,10 @@ pytest
 
 # Execute SpokeOps Telemetry Client verification
 npx tsx ui/web/test/spokeOpsClient.test.ts
+
+# Execute Mauro Development Standards (m-dev-standards) Guardrails
+bash .antigravity/skills/m-dev-standards/aes-v3/scripts/validate-aes.sh --root .
+bash .antigravity/skills/m-dev-standards/hub-spoke/scripts/validate-hub-spoke.sh --root .
 ```
 
 ---
@@ -246,3 +252,5 @@ All platform documentation is consolidated directly in this repository:
 - [Spoke 2 Video Ingest Guide](spokes/video-ingest/README.md) — Multimodal video extraction with Gemini.
 - [Web Control Center Guide](ui/README.md) — React dashboard and Cloud Run proxy deployment.
 - [SpokeOps Platform Guide](spokeops/README.md) — Centralized telemetry ingestion, session reaper, and RBAC observability.
+- [Platform Standards Deficiency Report](docs/standards_baseline/DEFICIENCY_REPORT.md) — Full portfolio audit and resolution evidence under `m-dev-standards` (`v1.0.1`).
+- [SpokeOps Standards Deficiency Report](spokeops/docs/standards_baseline/DEFICIENCY_REPORT.md) — SpokeOps compliance report covering ZSM, Error Boundaries, and dynamic staleness.

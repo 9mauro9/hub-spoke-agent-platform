@@ -128,3 +128,25 @@ All inter-agent messages conform to strict JSON schemas:
 - **Artifact Store:** Cloud Storage bucket `gs://agent-research-artifacts`.
 - **Distributed Tracing:** OpenTelemetry SDK exported to Google Cloud Trace with standardized W3C `traceparent` headers propagation.
 - **Universal Observability (SpokeOps):** Real-time session presence tracking and immutable audit trails via `POST /api/v1/telemetry` authenticated with `x-spoke-token`.
+
+---
+
+## 4. Engineering Standards & Governance (`m-dev-standards`)
+
+The platform conforms to **Mauro Development Standards (`m-dev-standards` `v1.0.1`)** mounted via Git submodule at `.antigravity/skills/m-dev-standards`:
+
+### 4.1 Zero-Symptom-Masking (ZSM)
+- Strict ban on empty catch blocks (`} catch {}`), swallowed promise rejections (`.catch(() => {})`), and unlogged failures across both frontend and backend runtimes.
+- All exceptions are captured with structured diagnostic metadata or re-thrown.
+
+### 4.2 Error Boundary Architecture
+- Both the Web UI and the SpokeOps operations console implement React `componentDidCatch` and `getDerivedStateFromError` lifecycle boundaries (`ErrorBoundary.tsx`).
+- Error boundaries are applied hierarchically:
+  1. Top-Level Shell Boundary: Guards against application crashes and protects navigation shells.
+  2. Spoke / Page Route Boundary: Isolates failing widgets or tabs, providing retry mechanisms without unmounting the parent shell.
+
+### 4.3 Deterministic Verification Guardrails
+- **AES v3 Software Hygiene:** Deterministically checked via `validate-aes.sh --root .`.
+- **Hub-Spoke Topology Invariants:** Validated via `validate-hub-spoke.sh --root .` to ensure zero lateral spoke-to-spoke imports.
+- Compliance reports are maintained at `docs/standards_baseline/DEFICIENCY_REPORT.md` and `spokeops/docs/standards_baseline/DEFICIENCY_REPORT.md`.
+

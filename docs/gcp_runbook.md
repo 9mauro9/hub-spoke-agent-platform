@@ -184,3 +184,12 @@ Expected response:
 ```json
 {"status":"accepted","received":true,"sessionId":"runbook-verify-session"}
 ```
+
+### 5.6 Engineering Standards Guardrails Verification
+Execute automated validation against `m-dev-standards` (`v1.0.1`) across the codebase:
+```bash
+bash .antigravity/skills/m-dev-standards/aes-v3/scripts/validate-aes.sh --root .
+bash .antigravity/skills/m-dev-standards/hub-spoke/scripts/validate-hub-spoke.sh --root .
+```
+*(Validates Zero-Symptom-Masking, ErrorBoundary tree coverage, component contracts, and zero lateral spoke-to-spoke imports)*
+

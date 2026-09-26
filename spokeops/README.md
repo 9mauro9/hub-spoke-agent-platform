@@ -1,13 +1,15 @@
 # SpokeOps
 
 [![Platform Standard](https://img.shields.io/badge/Standard-AES%20v3-blue.svg)](specs/agent-architecture/README.md)
+[![Mauro Dev Standards](https://img.shields.io/badge/m--dev--standards-v1.0.1-orange.svg)](docs/standards_baseline/DEFICIENCY_REPORT.md)
+[![Standards Compliance](https://img.shields.io/badge/Compliance-100%25%20Verified-brightgreen.svg)](docs/standards_baseline/DEFICIENCY_REPORT.md)
 [![Target GCP Project](https://img.shields.io/badge/GCP%20Project-spokeops--509217-blueviolet.svg)](https://console.cloud.google.com/home/dashboard?project=spokeops-509217)
 [![Firebase Console](https://img.shields.io/badge/Firebase-spokeops--509217-orange.svg)](https://console.firebase.google.com/project/spokeops-509217/overview)
 [![Live Web Console](https://img.shields.io/badge/Console-Live%20Production-brightgreen.svg)](https://spokeops-509217.web.app)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue.svg)](package.json)
 [![React](https://img.shields.io/badge/React-18.2-cyan.svg)](package.json)
 
-Universal telemetry ingestion, RBAC observability, and session monitoring platform across all software initiatives (including the Academy Apps family, Hub-Spoke Agent Platform, and Avventiq) governed by **Application Engineering Standard (AES) Version 3**.
+Universal telemetry ingestion, RBAC observability, and session monitoring platform across all software initiatives (including the Academy Apps family, Hub-Spoke Agent Platform, and Avventiq) governed by **Application Engineering Standard (AES) Version 3** and **Mauro Development Standards (`m-dev-standards`)**.
 
 ### Live Production Deployments
 - **SpokeOps Web Operations Console:** [https://spokeops-509217.web.app](https://spokeops-509217.web.app)
@@ -161,7 +163,17 @@ Server runs on [http://localhost:8080](http://localhost:8080).
 ```bash
 npm run test:api
 ```
-Executes 10 automated test suites verifying tenant token authentication, OWASP sanitization, session reaper, and eviction endpoints.
+Executes automated test suites verifying tenant token authentication, OWASP sanitization, session reaper, and eviction endpoints.
+
+### Run Engineering Standards Guardrails
+```bash
+# Strict enforcement (exits with non-zero code on violation)
+npm run standards:check
+
+# Non-blocking diagnostic audit
+npm run standards:audit
+```
+Deterministically linters against `m-dev-standards` (`v1.0.1`) verifying Zero-Symptom-Masking, Error Boundary coverage, and pure Hub-Spoke boundary isolation.
 
 ### Build Production Bundle
 ```bash
